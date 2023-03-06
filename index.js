@@ -116,9 +116,14 @@ function generate_listing_dom(path_data_array) {
         // let local_path = path_array[i];
         let li = document.createElement('div');
         li.classList.add('listing_entry');
-        li.textContent = display_name;
 
-        li.addEventListener('click', function (event) {
+        let name_div = document.createElement('div');
+        name_div.classList.add('display_name');
+        name_div.textContent = display_name;
+        li.appendChild(name_div);
+        // li.textContent = display_name;
+
+        name_div.addEventListener('click', function (event) {
             // TODO check to see if user is trying to select the text or not
             // if user is trying to select the text, do not trigger the event
             // TODO sync with the application state
@@ -143,8 +148,25 @@ function generate_listing_dom(path_data_array) {
                 }
 
                 let child_listing_dom = generate_listing_dom(child_file_data_array);
-                for (let j = 0; j < child_listing_dom.length; j++) {
-                    li.appendChild(child_listing_dom[j]);
+                if (child_listing_dom.length == 0) {
+                    // TODO handle empty directory
+                    console.log('empty directory');
+                } else {
+                    let child_container = li.querySelector('.child_container');
+                    if (child_container == null) {
+                        child_container = document.createElement('div');
+                        child_container.classList.add('child_container');
+                        li.appendChild(child_container);
+                    } else {
+                        // clear child container
+                        while (child_container.firstChild) {
+                            child_container.removeChild(child_container.firstChild);
+                        }
+                    }
+
+                    for (let j = 0; j < child_listing_dom.length; j++) {
+                        child_container.appendChild(child_listing_dom[j]);
+                    }
                 }
 
                 return;
@@ -157,6 +179,9 @@ function generate_listing_dom(path_data_array) {
                     console.log('image');
                     let preview_panel = document.getElementById('preview_view');
                     // TODO clear preview panel
+                    while (preview_panel.firstChild) {
+                        preview_panel.removeChild(preview_panel.firstChild);
+                    }
                     // TODO add support for multiple images
                     // TODO load image asynchronously to reduce disk usage
                     let img = document.createElement('img');
