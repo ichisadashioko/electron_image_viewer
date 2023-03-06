@@ -11,5 +11,50 @@ body {
 }
 
 .listing_entry {
+    margin-left: 1em;
+}
+
+.listing_entry>.display_name {
     color: #00ff00 !important;
+}
+
+.display_name {
+    /* make the text display in one line */
+    white-space: nowrap;
+}
+
+.listing_entry.even {
+    background-color: rgba(22, 22, 22, 0.5);
+}
+
+.listing_entry.odd {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.display_name:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+    border-color: #00ff00;
+    border-width: 1px;
+    border-style: solid;
+}
+
+#listing_view {
+    /* position: absolute; */
+    /* position: sticky; */
+    position: fixed;
+    top: 0;
+    left: 0;
+    /* width: 100vw; */
+    width: 50%;
+    height: 50%
+    /* height: 100vh !important; */
+    /* max-height: 100vh !important; */
+    z-index: 32;
+    overflow: scroll;
+}
+
+/* TODO make custom scroll bar inside #listing_view */
+#listing_view::-webkit-scrollbar {
+    width: 0px;
+    background: none;
 }

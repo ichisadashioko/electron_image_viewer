@@ -114,8 +114,15 @@ function generate_listing_dom(path_data_array) {
         let display_name = path_data_array[i]['display_name'];
         let local_path = path_data_array[i]['filepath'];
         // let local_path = path_array[i];
+
         let li = document.createElement('div');
         li.classList.add('listing_entry');
+
+        if ((i % 2) == 0) {
+            li.classList.add('even');
+        } else {
+            li.classList.add('odd');
+        }
 
         let name_div = document.createElement('div');
         name_div.classList.add('display_name');
