@@ -313,7 +313,7 @@ fs.access(saved_paths_filepath, fs.constants.F_OK, function (err) {
     });
 });
 
-function show_next_page() {
+function show_next_page(backward) {
     let preview_panel = document.getElementById('preview_view');
     if (preview_panel == null) {
         console.log('preview panel not found');
@@ -383,12 +383,24 @@ function show_next_page() {
     if (current_showing_image_index == -1) {
         console.log('current showing image not found');
         next_image_filepath_info = valid_image_filepath_info_array[0];
-    } else if (current_showing_image_index == valid_image_filepath_info_array.length - 1) {
-        console.log('current showing image is the last one');
-        next_image_filepath_info = valid_image_filepath_info_array[0];
     } else {
-        next_image_filepath_info = valid_image_filepath_info_array[current_showing_image_index + 1];
+        if (backward) {
+            if (current_showing_image_index == 0) {
+                console.log('current showing image is the first one');
+                next_image_filepath_info = valid_image_filepath_info_array[valid_image_filepath_info_array.length - 1];
+            } else {
+                next_image_filepath_info = valid_image_filepath_info_array[current_showing_image_index - 1];
+            }
+        } else {
+            if (current_showing_image_index == valid_image_filepath_info_array.length - 1) {
+                console.log('current showing image is the last one');
+                next_image_filepath_info = valid_image_filepath_info_array[0];
+            } else {
+                next_image_filepath_info = valid_image_filepath_info_array[current_showing_image_index + 1];
+            }
+        }
     }
+
 
     if (next_image_filepath_info == null) {
         console.log('next image not found');
@@ -462,6 +474,26 @@ document.body.addEventListener('keydown', function (event) {
         try {
             (function () {
                 if (show_next_page()) {
+                    event.preventDefault();
+                }
+            })();
+        } catch (error) {
+            console.log(error);
+        }
+
+        state.change_image_lock = false;
+    }
+    // previous page (arrow left)
+    else if (event.key === 'ArrowLeft') {
+        if (state.change_image_lock) {
+            console.log('next image lock is on');
+            return;
+        }
+
+        state.change_image_lock = true;
+        try {
+            (function () {
+                if (show_next_page(true)) {
                     event.preventDefault();
                 }
             })();
