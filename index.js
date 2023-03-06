@@ -146,174 +146,119 @@ function join_path(path_array) {
     return retval;
 }
 
-/**
- * @param {[{display_name: string, filepath: string}]} path_data_array
- */
-function generate_listing_dom(path_data_array) {
-    let retval = [];
-    for (let i = 0; i < path_data_array.length; i++) {
-        let display_name = path_data_array[i]['display_name'];
-        let local_path = path_data_array[i]['filepath'];
-        // let local_path = path_array[i];
-
-        let li = document.createElement('div');
-        li.classList.add('listing_entry');
-
-        if ((i % 2) == 0) {
-            li.classList.add('even');
-        } else {
-            li.classList.add('odd');
-        }
-
-        let name_div = document.createElement('div');
-        name_div.classList.add('display_name');
-        name_div.textContent = display_name;
-        li.appendChild(name_div);
-        // li.textContent = display_name;
-
-        name_div.addEventListener('click', function (event) {
-            // TODO check to see if user is trying to select the text or not
-            // if user is trying to select the text, do not trigger the event
-            // TODO sync with the application state
-            // TODO option to go back if this event is triggered by mistake
-            // TODO option to open in new window
-            // TODO option to open in new tab
-
-            console.log(local_path);
-            let path_info = get_path_info(local_path);
-            if (path_info['type'] == 'directory') {
-                console.log('directory');
-                let child_filename_array = fs.readdirSync(local_path);
-                console.log(child_filename_array);
-                let child_file_data_array = [];
-                for (let j = 0; j < child_filename_array.length; j++) {
-                    let child_filename = child_filename_array[j];
-                    let child_filepath = join_path([local_path, child_filename]);
-                    child_file_data_array.push({
-                        'display_name': child_filename,
-                        'filepath': child_filepath,
-                    });
-                }
-
-                let child_listing_dom = generate_listing_dom(child_file_data_array);
-                if (child_listing_dom.length == 0) {
-                    // TODO handle empty directory
-                    console.log('empty directory');
-                } else {
-                    let child_container = li.querySelector('.child_container');
-                    if (child_container == null) {
-                        child_container = document.createElement('div');
-                        child_container.classList.add('child_container');
-                        li.appendChild(child_container);
-                    } else {
-                        // clear child container
-                        while (child_container.firstChild) {
-                            child_container.removeChild(child_container.firstChild);
-                        }
-                    }
-
-                    for (let j = 0; j < child_listing_dom.length; j++) {
-                        child_container.appendChild(child_listing_dom[j]);
-                    }
-                }
-
-                return;
-            } else if (path_info['type'] == 'regular_file') {
-                console.log('regular file');
-
-                let filename = get_filename(local_path);
-                let absolute_path = path.resolve(local_path);
-                if (is_supported_image_file(filename)) {
-                    state.showing_image_absolute_path = absolute_path;
-                    // TODO store file ordering method
-                    let preview_panel = document.getElementById('preview_view');
-                    // TODO clear preview panel
-                    while (preview_panel.firstChild) {
-                        preview_panel.removeChild(preview_panel.firstChild);
-                    }
-                    // TODO add support for multiple images
-                    // TODO load image asynchronously to reduce disk usage
-                    let img = document.createElement('img');
-                    // TODO handle URI encode for browser compatibility
-                    img.src = absolute_path;
-                    preview_panel.appendChild(img);
-                    return;
-                }
-
-                return;
-            } else {
-                // TODO handle error
-                console.log('error');
-                console.log(path_info);
-                return;
-            }
-        });
-
-        retval.push(li);
+function get_parent_path(filepath) {
+    // remove trailing slash using regex
+    let path_without_trailing_slash = filepath.replace(/\/+$/, '');
+    let i = path_without_trailing_slash.lastIndexOf('/');
+    if (i == -1) {
+        // TODO handle windows style paths
+        throw new Error('invalid path');
     }
-    return retval;
+
+    let parent_path = path_without_trailing_slash.substring(0, i);
+    return parent_path;
 }
 
-// TODO customize user_data location
-var user_data_root_filepath = 'user_data';
-var saved_paths_filepath = user_data_root_filepath + '/saved_paths.tsv';
-var saved_path_list = [];
+function os_path_split(filepath) {
+    // remove trailing slash using regex
+    let path_without_trailing_slash = filepath.replace(/\/+$/, '');
+    let i = path_without_trailing_slash.lastIndexOf('/');
 
-// TODO load saved paths
-fs.access(saved_paths_filepath, fs.constants.F_OK, function (err) {
-    if (err) {
-        console.log(`${saved_paths_filepath} does not exist`);
+    let parent_path = '';
+    let filename = '';
+
+    if (i == -1) {
+        filename = path_without_trailing_slash;
+    } else if (i == 0) {
+        parent_path = '/';
+        filename = path_without_trailing_slash.substring(1);
+    } else {
+        parent_path = path_without_trailing_slash.substring(0, i);
+        filename = path_without_trailing_slash.substring(i + 1);
+    }
+
+    return {
+        'parent': parent_path,
+        'filename': filename,
+    };
+}
+
+function show_single_image(file_info) {
+    let preview_panel = document.getElementById('preview_view');
+    if (preview_panel == null) {
+        console.error('preview panel not found');
         return;
     }
 
-    console.log(`${saved_paths_filepath} exists`);
-    fs.readFile(saved_paths_filepath, 'utf8', function (err, data) {
-        if (err) {
-            console.log(err);
-            return;
-        }
+    // TODO should we error check here?
+    let filepath = file_info['filepath'];
+    let parent_path = file_info['parent'];
+    let gallery_root = file_info['gallery_root'];
 
-        console.log(data);
-        let line_array = data.split('\n');
-        for (let i = 0; i < line_array.length; i++) {
-            let line = line_array[i];
-            if (line.length == 0) { continue; }
-            // if line starts with #, skip
-            if (line[0] == '#') { continue; }
-            saved_path_list.push(line);
-        }
+    state.showing_image_absolute_path = filepath;
+    state.showing_image_parent_path = parent_path;
+    state.showing_image_gallery_root = gallery_root;
 
-        console.log(saved_path_list);
-        // TODO display saved paths
-        if (saved_path_list.length == 0) {
-            console.log('no saved paths');
-            return;
-        }
+    // TODO add support for multiple images
+    // TODO load image asynchronously to reduce disk usage
+    let img = document.createElement('img');
+    // TODO handle URI encode for browser compatibility
+    img.src = filepath;
+    while (preview_panel.firstChild) { preview_panel.removeChild(preview_panel.firstChild); }
+    preview_panel.appendChild(img);
+    return true;
+}
 
-        let root_container = document.getElementById('listing_view');
-        if (root_container == null) {
-            console.log('root container not found');
-            return;
+function listing_valid_image_files(inpath) {
+    let child_filename_array = fs.readdirSync(inpath);
+    let valid_image_filepath_info_array = [];
+    for (let i = 0; i < child_filename_array.length; i++) {
+        let child_filename = child_filename_array[i];
+        let child_filepath = inpath + '/' + child_filename;
+        if (!is_regular_file(child_filepath)) {
+            continue;
         }
+        if (!is_supported_image_file(child_filename)) {
+            continue;
+        }
+        valid_image_filepath_info_array.push({
+            'filename': child_filename,
+            'filepath': child_filepath,
+        });
+    }
 
-        let _path_data_array = [];
-        for (let i = 0; i < saved_path_list.length; i++) {
-            let saved_path = saved_path_list[i];
-            _path_data_array.push({
-                'display_name': saved_path,
-                'filepath': saved_path,
-            });
-        }
+    return valid_image_filepath_info_array;
+}
 
-        let listing_dom = generate_listing_dom(_path_data_array);
-        for (let i = 0; i < listing_dom.length; i++) {
-            let li = listing_dom[i];
-            root_container.appendChild(li);
-        }
+function show_directory_first_image(file_info) {
+    let preview_panel = document.getElementById('preview_view');
+    if (preview_panel == null) {
+        console.error('preview panel not found');
+        return;
+    }
+
+    // TODO should we error check here?
+    let filepath = file_info['filepath'];
+    let gallery_root = file_info['gallery_root'];
+
+    let valid_image_filepath_info_array = listing_valid_image_files(filepath);
+
+    if (valid_image_filepath_info_array.length == 0) {
+        // TODO tell the caller that no valid image is found in this directory
+        console.log('no valid image found');
+        return;
+    }
+
+    valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
+    let first_image_filepath_info = valid_image_filepath_info_array[0];
+    return show_single_image({
+        'filepath': first_image_filepath_info['filepath'],
+        'parent': filepath,
+        'gallery_root': gallery_root,
     });
-});
+}
 
-function show_next_page(backward) {
+function next_image(backward) {
     let preview_panel = document.getElementById('preview_view');
     if (preview_panel == null) {
         console.log('preview panel not found');
@@ -347,22 +292,7 @@ function show_next_page(backward) {
         return;
     }
 
-    let child_filename_array = fs.readdirSync(current_showing_image_directory);
-    let valid_image_filepath_info_array = [];
-    for (let i = 0; i < child_filename_array.length; i++) {
-        let child_filename = child_filename_array[i];
-        let child_filepath = current_showing_image_directory + '/' + child_filename;
-        if (!is_regular_file(child_filepath)) {
-            continue;
-        }
-        if (!is_supported_image_file(child_filename)) {
-            continue;
-        }
-        valid_image_filepath_info_array.push({
-            'filename': child_filename,
-            'filepath': child_filepath,
-        });
-    }
+    let valid_image_filepath_info_array = listing_valid_image_files(current_showing_image_directory);
 
     if (valid_image_filepath_info_array.length == 0) {
         console.log('no valid image found');
@@ -413,16 +343,301 @@ function show_next_page(backward) {
         return;
     }
 
-    while (preview_panel.firstChild) {
-        preview_panel.removeChild(preview_panel.firstChild);
+    return show_single_image({
+        'filepath': next_image_filepath,
+        'parent': current_showing_image_directory,
+        'gallery_root': state.showing_image_gallery_root,
+    });
+}
+
+function show_next_directory(backward) {
+    let preview_panel = document.getElementById('preview_view');
+    if (preview_panel == null) {
+        console.log('preview panel not found');
+        return;
     }
 
-    let image = document.createElement('img');
-    image.src = next_image_filepath;
-    preview_panel.appendChild(image);
-    state.showing_image_absolute_path = next_image_filepath;
-    return true;
+    /** @type {string} */
+    let current_showing_image_absolute_path = state.showing_image_absolute_path;
+    if (current_showing_image_absolute_path == null) {
+        console.log('no image is showing');
+        return;
+    }
+
+    let current_showing_image_directory = state.showing_image_parent_path;
+    if (current_showing_image_directory == null) {
+        current_showing_image_directory = get_parent_path(current_showing_image_absolute_path);
+    }
+
+    if (current_showing_image_directory == null) {
+        console.log('current_showing_image_directory == null');
+        return;
+    }
+
+    let _retval = os_path_split(current_showing_image_directory);
+    let parent_path = _retval['parent'];
+    let current_dir_filename = _retval['filename'];
+    if (parent_path == null) {
+        console.log('parent_path == null');
+        return;
+    }
+
+    // check if we jump out of 'gallery_root'
+    let gallery_root = state.showing_image_gallery_root;
+    if (gallery_root == null) {
+        console.log('gallery_root == null');
+        // free to roam
+    } else {
+        let i = parent_path.indexOf(gallery_root);
+        if (i != 0) {
+            console.log('parent_path.indexOf(gallery_root) != 0');
+            return;
+        }
+    }
+
+    let child_filename_array = fs.readdirSync(parent_path);
+    if (child_filename_array.length == 0) {
+        console.log('no child found');
+        return;
+    }
+
+    if (child_filename_array.length == 1) {
+        console.log('only one child found');
+        if (child_filename_array[0] == current_dir_filename) {
+            console.log('only one child found, and it is the current directory');
+            return;
+        } else {
+            console.log('only one child found, but it is not the current directory');
+            // TODO handle this case
+            return;
+        }
+    }
+
+    // TODO load saved sorting method
+    let directory_info_array = [];
+    for (let i = 0; i < child_filename_array.length; i++) {
+        let child_filename = child_filename_array[i];
+        let child_filepath = parent_path + '/' + child_filename;
+        let child_info = get_path_info(child_filepath);
+        if (child_info['is_directory']) {
+            directory_info_array.push({
+                'filename': child_filename,
+                'filepath': child_filepath,
+            });
+        }
+    }
+
+    if (directory_info_array.length == 0) {
+        // TODO handle this case (move up to parent directory)
+        console.log('no directory found');
+        return;
+    }
+
+    if (directory_info_array.length == 1) {
+        console.log('only one directory found');
+        if (directory_info_array[0]['filename'] == current_dir_filename) {
+            // TODO handle this case (move up to parent directory)
+            console.log('only one directory found, and it is the current directory');
+            return;
+        } else {
+            // TODO handle this case - show the only directory?
+            console.log('only one directory found, but it is not the current directory');
+            return;
+        }
+    }
+
+    let idx = -1;
+    for (let i = 0; i < directory_info_array.length; i++) {
+        let child_filename = directory_info_array[i]['filename'];
+        if (child_filename === current_dir_filename) {
+            idx = i;
+            break;
+        }
+    }
+
+    if (idx === -1) {
+        console.error('current directory not found');
+        return;
+    }
+
+    let next_directory_index = -1;
+    if (backward) {
+        if (idx == 0) {
+            next_directory_index = directory_info_array.length - 1;
+        } else {
+            next_directory_index = idx - 1;
+        }
+    } else {
+        if (idx == directory_info_array.length - 1) {
+            next_directory_index = 0;
+        } else {
+            next_directory_index = idx + 1;
+        }
+    }
+
+    let next_directory_filepath = directory_info_array[next_directory_index]['filepath'];
+    return show_directory_first_image({
+        'filepath': next_directory_filepath,
+        'gallery_root': state.showing_image_gallery_root,
+    });
 }
+
+/**
+ * @param {[{display_name: string, filepath: string}]} path_data_array
+ */
+function generate_listing_dom(path_data_array) {
+    let retval = [];
+    for (let i = 0; i < path_data_array.length; i++) {
+        let display_name = path_data_array[i]['display_name'];
+        let local_path = path_data_array[i]['filepath'];
+        let parent_path = path_data_array[i]['parent'];
+        let gallery_root = path_data_array[i]['gallery_root'];
+
+        let li = document.createElement('div');
+        li.classList.add('listing_entry');
+
+        if ((i % 2) == 0) {
+            li.classList.add('even');
+        } else {
+            li.classList.add('odd');
+        }
+
+        let name_div = document.createElement('div');
+        name_div.classList.add('display_name');
+        name_div.textContent = display_name;
+        li.appendChild(name_div);
+        // li.textContent = display_name;
+
+        name_div.addEventListener('click', function (event) {
+            // TODO check to see if user is trying to select the text or not
+            // if user is trying to select the text, do not trigger the event
+            // TODO sync with the application state
+            // TODO option to go back if this event is triggered by mistake
+            // TODO option to open in new window
+            // TODO option to open in new tab
+            // TODO option to preview all images in directory
+
+            console.log(local_path);
+            let path_info = get_path_info(local_path);
+            if (path_info['type'] == 'directory') {
+                console.log('directory');
+                let child_filename_array = fs.readdirSync(local_path);
+                console.log(child_filename_array);
+                let child_file_data_array = [];
+                for (let j = 0; j < child_filename_array.length; j++) {
+                    let child_filename = child_filename_array[j];
+                    let child_filepath = join_path([local_path, child_filename]);
+                    child_file_data_array.push({
+                        'display_name': child_filename,
+                        'filepath': child_filepath,
+                        'parent': local_path,
+                        'gallery_root': gallery_root,
+                    });
+                }
+
+                let child_listing_dom = generate_listing_dom(child_file_data_array);
+                if (child_listing_dom.length == 0) {
+                    // TODO handle empty directory
+                    console.log('empty directory');
+                } else {
+                    let child_container = li.querySelector('.child_container');
+                    if (child_container == null) {
+                        child_container = document.createElement('div');
+                        child_container.classList.add('child_container');
+                        li.appendChild(child_container);
+                    } else {
+                        // clear child container
+                        while (child_container.firstChild) {
+                            child_container.removeChild(child_container.firstChild);
+                        }
+                    }
+
+                    for (let j = 0; j < child_listing_dom.length; j++) {
+                        child_container.appendChild(child_listing_dom[j]);
+                    }
+                }
+            } else if (path_info['type'] == 'regular_file') {
+                console.log('regular file');
+
+                let filename = get_filename(local_path);
+                let absolute_path = path.resolve(local_path);
+                if (is_supported_image_file(filename)) {
+                    show_single_image({
+                        'filepath': absolute_path,
+                        'parent': parent_path,
+                        'gallery_root': gallery_root,
+                    });
+                }
+            } else {
+                // TODO handle error
+                console.log('error');
+                console.log(path_info);
+            }
+        });
+
+        retval.push(li);
+    }
+    return retval;
+}
+
+// TODO customize user_data location
+var user_data_root_filepath = 'user_data';
+var saved_paths_filepath = user_data_root_filepath + '/saved_paths.tsv';
+var saved_path_list = [];
+
+// TODO load saved paths
+fs.access(saved_paths_filepath, fs.constants.F_OK, function (err) {
+    if (err) {
+        console.log(`${saved_paths_filepath} does not exist`);
+        return;
+    }
+
+    console.log(`${saved_paths_filepath} exists`);
+    fs.readFile(saved_paths_filepath, 'utf8', function (err, data) {
+        if (err) {
+            console.log(err);
+            return;
+        }
+
+        console.log(data);
+        let line_array = data.split('\n');
+        for (let i = 0; i < line_array.length; i++) {
+            let line = line_array[i];
+            if (line.length == 0) { continue; }
+            // if line starts with #, skip
+            if (line[0] == '#') { continue; }
+            saved_path_list.push(line);
+        }
+
+        console.log(saved_path_list);
+        if (saved_path_list.length == 0) {
+            console.log('no saved paths');
+            return;
+        }
+
+        let root_container = document.getElementById('listing_view');
+        if (root_container == null) {
+            console.log('root container not found');
+            return;
+        }
+
+        let _path_data_array = [];
+        for (let i = 0; i < saved_path_list.length; i++) {
+            let saved_path = saved_path_list[i];
+            _path_data_array.push({
+                'display_name': saved_path,
+                'filepath': saved_path,
+                'gallery_root': saved_path,
+            });
+        }
+
+        let listing_dom = generate_listing_dom(_path_data_array);
+        for (let i = 0; i < listing_dom.length; i++) {
+            let li = listing_dom[i];
+            root_container.appendChild(li);
+        }
+    });
+});
 
 // manga view
 // right to left
@@ -473,7 +688,7 @@ document.body.addEventListener('keydown', function (event) {
         state.change_image_lock = true;
         try {
             (function () {
-                if (show_next_page()) {
+                if (next_image()) {
                     event.preventDefault();
                 }
             })();
@@ -493,7 +708,47 @@ document.body.addEventListener('keydown', function (event) {
         state.change_image_lock = true;
         try {
             (function () {
-                if (show_next_page(true)) {
+                if (next_image(true)) {
+                    event.preventDefault();
+                }
+            })();
+        } catch (error) {
+            console.log(error);
+        }
+
+        state.change_image_lock = false;
+    }
+    // next directory (arrow down)
+    else if (event.key === 'ArrowDown') {
+        if (state.change_image_lock) {
+            console.log('next image lock is on');
+            return;
+        }
+
+        state.change_image_lock = true;
+        try {
+            (function () {
+                if (show_next_directory()) {
+                    event.preventDefault();
+                }
+            })();
+        } catch (error) {
+            console.log(error);
+        }
+
+        state.change_image_lock = false;
+    }
+    // previous directory (arrow up)
+    else if (event.key === 'ArrowUp') {
+        if (state.change_image_lock) {
+            console.log('next image lock is on');
+            return;
+        }
+
+        state.change_image_lock = true;
+        try {
+            (function () {
+                if (show_next_directory(true)) {
                     event.preventDefault();
                 }
             })();

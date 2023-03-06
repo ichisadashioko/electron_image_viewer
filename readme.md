@@ -13,6 +13,7 @@
 - [ ] detect partially corrupted images and show them as broken
 - [ ] delete unwanted images with keyboard shortcut/button (with confirmation by default)
 - [ ] recover accidentally deleted images
+- [ ] add support for mixed image/sub-directory
 
 # why
 
