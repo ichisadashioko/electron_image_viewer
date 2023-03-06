@@ -1,5 +1,15 @@
-html, body {
+html,
+body {
     background-color: #000 !important;
     margin: 0 !important;
     padding: 0 !important;
+}
+
+* {
+    color: #fff;
+    font-family: "Droid Sans Mono", "monospace", monospace;
+}
+
+.listing_entry {
+    color: #00ff00 !important;
 }

@@ -14,6 +14,7 @@ function createWindow() {
             enableRemoteModule: true,
             backgroundThrottling: false,
             nativeWindowOpen: true,
+            devTools: true,
         },
     });
 
