@@ -284,3 +284,32 @@ var state = {};
 // fit width
 
 // download image from ftp url
+
+document.body.addEventListener('keydown', function (event) {
+    // Check if the event was triggered by a text input element
+    const isTextInput = ['INPUT', 'TEXTAREA', 'CONTENTEDITABLE'].includes(event.target.tagName);
+
+    // Execute your shortcut code only if the event was not triggered by a text input element
+    if (isTextInput) {
+        // TODO test if this works
+        return;
+    }
+
+    // if (event.key === 's' && event.ctrlKey) {
+    //     // Ctrl+S was pressed, execute your save code
+    // } else if (event.key === 'z' && event.ctrlKey) {
+    //     // Ctrl+Z was pressed, execute your undo code
+    // }
+
+    // toggle navigation panel visibility
+    if (event.key === 'n') {
+        let navigation_panel = document.getElementById('listing_view');
+        if (navigation_panel == null) {
+            console.log('navigation panel not found');
+            return;
+        }
+        // adding and removing hidden class
+        navigation_panel.classList.toggle('hidden');
+        event.preventDefault();
+    }
+});

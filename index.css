@@ -38,6 +38,10 @@ body {
     border-style: solid;
 }
 
+#listing_view.hidden {
+    display: none !important;
+}
+
 #listing_view {
     /* position: absolute; */
     /* position: sticky; */
