@@ -1,4 +1,10 @@
 const { app, BrowserWindow } = require('electron');
+const path = require('path');
+
+const default_chromium_user_data_path = path.join(__dirname, 'chromium_user_data');
+console.log(default_chromium_user_data_path);
+
+app.setPath('userData', default_chromium_user_data_path);
 
 var browser_window;
 
