@@ -27,3 +27,4 @@
 # design decisions
 
 - I would love to build native app in C, however it would take a lot of time. I want to build it quickly to replace OpenComic so I decided to use Electron.
+- Use `/` internally as path separator. Convert to platform specific path separator when calling `fs` related functions.

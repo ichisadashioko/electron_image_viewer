@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+// const electron = require('electron');
 
 var state = {};
 var IMAGE_EXTENSIONS = [
@@ -11,6 +12,87 @@ var IMAGE_EXTENSIONS = [
     'webp',
     'tiff',
 ];
+
+function to_platform_path(inpath) {
+    let platform_path_separator = '/';
+    if (process.platform === 'win32') {
+        platform_path_separator = '\\';
+    }
+
+    let tmp_array = inpath.split('/');
+    let tmp_array2 = [];
+    for (let i = 0; i < tmp_array.length; i++) {
+        let tmp_str = tmp_array[i];
+        if (tmp_str.length > 0) {
+            let tmp_array3 = tmp_str.split('\\');
+            for (let j = 0; j < tmp_array3.length; j++) {
+                let tmp_str2 = tmp_array3[j];
+                if (tmp_str2.length > 0) {
+                    tmp_array2.push(tmp_str2);
+                }
+            }
+        }
+    }
+
+    let retval = tmp_array2.join(platform_path_separator);
+    if (process.platform === 'win32') { } else {
+        if (inpath[0] === '/') {
+            retval = '/' + retval;
+        }
+    }
+
+    // let retval = inpath.replace(/\//g, platform_path_separator);
+    return retval;
+}
+
+function to_web_friendly_path(inpath) {
+    let tmp_array = inpath.split('/');
+    let tmp_array2 = [];
+    for (let i = 0; i < tmp_array.length; i++) {
+        let tmp_str = tmp_array[i];
+        if (tmp_str.length > 0) {
+            let tmp_array3 = tmp_str.split('\\');
+            for (let j = 0; j < tmp_array3.length; j++) {
+                let tmp_str2 = tmp_array3[j];
+                if (tmp_str2.length > 0) {
+                    tmp_array2.push(tmp_str2);
+                }
+            }
+        }
+    }
+
+    let uri_encoded_path_components = [];
+    let tmp_str = tmp_array2[0];
+
+    if ((process.platform === 'win32') && (tmp_str.length === 2) && (tmp_str[1] === ':')) {
+        uri_encoded_path_components.push(tmp_array2[0]);
+
+        for (let i = 1; i < tmp_array2.length; i++) {
+            let tmp_str = tmp_array2[i];
+            let uri_encoded_str = encodeURIComponent(tmp_str);
+            uri_encoded_path_components.push(uri_encoded_str);
+        }
+    } else {
+        for (let i = 0; i < tmp_array2.length; i++) {
+            let tmp_str = tmp_array2[i];
+            let uri_encoded_str = encodeURIComponent(tmp_str);
+            uri_encoded_path_components.push(uri_encoded_str);
+        }
+    }
+
+    let retval = uri_encoded_path_components.join('/');
+
+    if (process.platform === 'win32') {
+
+    } else {
+        if (inpath[0] === '/') {
+            retval = '/' + retval;
+        }
+    }
+
+    retval = 'file://' + retval;
+    return retval;
+}
 
 function is_regular_file(filepath) {
     let path_info = get_path_info(filepath);
@@ -67,7 +149,7 @@ function get_path_info(inpath) {
 
     // TODO handle ftp url
     try {
-        let file_stat = fs.statSync(inpath);
+        let file_stat = fs.statSync(to_platform_path(inpath));
         if (file_stat.isFile()) {
             retval['type'] = 'regular_file';
         } else if (file_stat.isSymbolicLink()) {
@@ -203,14 +285,14 @@ function show_single_image(file_info) {
     // TODO load image asynchronously to reduce disk usage
     let img = document.createElement('img');
     // TODO handle URI encode for browser compatibility
-    img.src = filepath;
+    img.src = to_web_friendly_path(filepath);
     while (preview_panel.firstChild) { preview_panel.removeChild(preview_panel.firstChild); }
     preview_panel.appendChild(img);
     return true;
 }
 
 function listing_valid_image_files(inpath) {
-    let child_filename_array = fs.readdirSync(inpath);
+    let child_filename_array = fs.readdirSync(to_platform_path(inpath));
     let valid_image_filepath_info_array = [];
     for (let i = 0; i < child_filename_array.length; i++) {
         let child_filename = child_filename_array[i];
@@ -395,7 +477,7 @@ function show_next_directory(backward) {
         }
     }
 
-    let child_filename_array = fs.readdirSync(parent_path);
+    let child_filename_array = fs.readdirSync(to_platform_path(parent_path));
     if (child_filename_array.length == 0) {
         console.log('no child found');
         return;
@@ -521,7 +603,7 @@ function generate_listing_dom(path_data_array) {
             let path_info = get_path_info(local_path);
             if (path_info['type'] == 'directory') {
                 console.log('directory');
-                let child_filename_array = fs.readdirSync(local_path);
+                let child_filename_array = fs.readdirSync(to_platform_path(local_path));
                 console.log(child_filename_array);
                 let child_file_data_array = [];
                 for (let j = 0; j < child_filename_array.length; j++) {
@@ -560,7 +642,7 @@ function generate_listing_dom(path_data_array) {
                 console.log('regular file');
 
                 let filename = get_filename(local_path);
-                let absolute_path = path.resolve(local_path);
+                let absolute_path = path.resolve(to_platform_path(local_path));
                 if (is_supported_image_file(filename)) {
                     show_single_image({
                         'filepath': absolute_path,
@@ -585,15 +667,15 @@ var user_data_root_filepath = 'user_data';
 var saved_paths_filepath = user_data_root_filepath + '/saved_paths.tsv';
 var saved_path_list = [];
 
-// TODO load saved paths
-fs.access(saved_paths_filepath, fs.constants.F_OK, function (err) {
+// load saved paths
+fs.access(to_platform_path(saved_paths_filepath), fs.constants.F_OK, function (err) {
     if (err) {
         console.log(`${saved_paths_filepath} does not exist`);
         return;
     }
 
     console.log(`${saved_paths_filepath} exists`);
-    fs.readFile(saved_paths_filepath, 'utf8', function (err, data) {
+    fs.readFile(to_platform_path(saved_paths_filepath), 'utf8', function (err, data) {
         if (err) {
             console.log(err);
             return;

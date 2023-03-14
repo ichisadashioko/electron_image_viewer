@@ -31,7 +31,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-    createWindow()
+    createWindow();
 });
 
 // quitting the app when no windows are open on non-macOS platforms
