@@ -94,6 +94,33 @@ function to_web_friendly_path(inpath) {
     return retval;
 }
 
+function to_internal_path(inpath) {
+    let platform_path_separator = '/';
+    let tmp_array = inpath.split('/');
+    let tmp_array2 = [];
+    for (let i = 0; i < tmp_array.length; i++) {
+        let tmp_str = tmp_array[i];
+        if (tmp_str.length > 0) {
+            let tmp_array3 = tmp_str.split('\\');
+            for (let j = 0; j < tmp_array3.length; j++) {
+                let tmp_str2 = tmp_array3[j];
+                if (tmp_str2.length > 0) {
+                    tmp_array2.push(tmp_str2);
+                }
+            }
+        }
+    }
+
+    let retval = tmp_array2.join(platform_path_separator);
+    if (process.platform === 'win32') { } else {
+        if (inpath[0] === '/') {
+            retval = '/' + retval;
+        }
+    }
+
+    return retval;
+}
+
 function is_regular_file(filepath) {
     let path_info = get_path_info(filepath);
     if (path_info['type'] == 'regular_file') {
@@ -242,21 +269,51 @@ function get_parent_path(filepath) {
 }
 
 function os_path_split(filepath) {
-    // remove trailing slash using regex
-    let path_without_trailing_slash = filepath.replace(/\/+$/, '');
-    let i = path_without_trailing_slash.lastIndexOf('/');
+    let tmp_array = filepath.split('/');
+    let path_component_array = [];
+    for (let i = 0; i < tmp_array.length; i++) {
+        let tmp_str = tmp_array[i];
+        if (tmp_str.length > 0) {
+            let tmp_array3 = tmp_str.split('\\');
+            for (let j = 0; j < tmp_array3.length; j++) {
+                let tmp_str2 = tmp_array3[j];
+                if (tmp_str2.length > 0) {
+                    path_component_array.push(tmp_str2);
+                }
+            }
+        }
+    }
 
-    let parent_path = '';
-    let filename = '';
+    let parent_path = null;
+    let filename = null;
 
-    if (i == -1) {
-        filename = path_without_trailing_slash;
-    } else if (i == 0) {
-        parent_path = '/';
-        filename = path_without_trailing_slash.substring(1);
+    if (path_component_array.length == 0) {
+        if (process.platform == 'win32') { } else {
+            if (filepath[0] == '/') {
+                filename = '/';
+            }
+        }
     } else {
-        parent_path = path_without_trailing_slash.substring(0, i);
-        filename = path_without_trailing_slash.substring(i + 1);
+        if (path_component_array.length == 1) {
+            filename = path_component_array[0];
+        } else {
+            filename = path_component_array[path_component_array.length - 1];
+            parent_path = '';
+            for (let i = 0; i < path_component_array.length - 1; i++) {
+                let tmp_str = path_component_array[i];
+                if (i == 0) {
+                    parent_path += tmp_str;
+                } else {
+                    parent_path += '/' + tmp_str;
+                }
+            }
+
+            if (process.platform == 'win32') { } else {
+                if (filepath[0] == '/') {
+                    parent_path = '/' + parent_path;
+                }
+            }
+        }
     }
 
     return {
@@ -354,15 +411,10 @@ function next_image(backward) {
         return;
     }
 
-    // TODO handle Windows path separator
-    let i = current_showing_image_absolute_path.lastIndexOf('/');
-    if (i < 1) {
-        console.log('invalid path');
-        return;
-    }
 
-    let current_showing_image_filename = current_showing_image_absolute_path.substring(i + 1);
-    let current_showing_image_directory = current_showing_image_absolute_path.substring(0, i);
+    let _retval = os_path_split(current_showing_image_absolute_path);
+    let current_showing_image_directory = _retval['parent'];
+    let current_showing_image_filename = _retval['filename'];
 
     if (current_showing_image_directory == null) {
         console.log('invalid path');
@@ -465,7 +517,7 @@ function show_next_directory(backward) {
     }
 
     // check if we jump out of 'gallery_root'
-    let gallery_root = state.showing_image_gallery_root;
+    let gallery_root = to_internal_path(state.showing_image_gallery_root);
     if (gallery_root == null) {
         console.log('gallery_root == null');
         // free to roam
