@@ -21,8 +21,19 @@ function createWindow() {
             backgroundThrottling: false,
             nativeWindowOpen: true,
             devTools: true,
+            autoHideMenuBar: true,
         },
     });
+
+    // Hide the menu bar when in full screen mode
+    browser_window.on('enter-full-screen', () => {
+        browser_window.setMenuBarVisibility(false);
+    })
+
+    // Show the menu bar when exiting full screen mode
+    browser_window.on('leave-full-screen', () => {
+        browser_window.setMenuBarVisibility(true);
+    })
 
     browser_window.loadFile('index.html');
 
