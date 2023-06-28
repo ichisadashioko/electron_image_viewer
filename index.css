@@ -94,9 +94,22 @@ body {
     /* limit image height to container height */
     object-fit: contain;
     /* scale image to fit within container while maintaining aspect ratio */
+}
 
+#preview_view>img.debug_border {
     margin: -1px;
     border-color: #00ff00;
     border-width: 1px;
     border-style: solid;
+}
+
+#preview_view>img.single_image_auto_fit {
+    max-width: 100%;
+    /* limit image width to container width */
+    max-height: 100%;
+    /* limit image height to container height */
+    object-fit: contain;
+    /* scale image to fit within container while maintaining aspect ratio */
+    width: 100vw;
+    height: 100vh;
 }

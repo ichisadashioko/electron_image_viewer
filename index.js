@@ -1,8 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+// const { electron } = require('process');
 // const electron = require('electron');
+// const ELECTRON_REMOTE = require('electron');
 
 var state = {};
+var GLOBAL_LISTING_LOCATION_ARRAY = [];
 var IMAGE_EXTENSIONS = [
     'jpg',
     'jpeg',
@@ -341,6 +344,7 @@ function show_single_image(file_info) {
     // TODO add support for multiple images
     // TODO load image asynchronously to reduce disk usage
     let img = document.createElement('img');
+    img.classList.add('single_image_auto_fit');
     // TODO handle URI encode for browser compatibility
     img.src = to_web_friendly_path(filepath);
     while (preview_panel.firstChild) { preview_panel.removeChild(preview_panel.firstChild); }
@@ -714,6 +718,30 @@ function generate_listing_dom(path_data_array) {
     return retval;
 }
 
+function render_global_listing_location_array() {
+    let _location_info_array = [];
+    for (let i = 0; i < GLOBAL_LISTING_LOCATION_ARRAY.length; i++) {
+        let _location = GLOBAL_LISTING_LOCATION_ARRAY[i];
+        _location_info_array.push({
+            'display_name': _location,
+            'filepath': _location,
+            'gallery_root': _location,
+        });
+    }
+
+    let root_container = document.getElementById('listing_view');
+    if (root_container == null) {
+        console.log('root container not found');
+        return;
+    }
+
+    let listing_dom = generate_listing_dom(_location_info_array);
+    for (let i = 0; i < listing_dom.length; i++) {
+        let li = listing_dom[i];
+        root_container.appendChild(li);
+    }
+}
+
 // TODO customize user_data location
 var user_data_root_filepath = 'user_data';
 var saved_paths_filepath = user_data_root_filepath + '/saved_paths.tsv';
@@ -755,21 +783,12 @@ fs.access(to_platform_path(saved_paths_filepath), fs.constants.F_OK, function (e
             return;
         }
 
-        let _path_data_array = [];
         for (let i = 0; i < saved_path_list.length; i++) {
             let saved_path = saved_path_list[i];
-            _path_data_array.push({
-                'display_name': saved_path,
-                'filepath': saved_path,
-                'gallery_root': saved_path,
-            });
+            GLOBAL_LISTING_LOCATION_ARRAY.push(saved_path);
         }
 
-        let listing_dom = generate_listing_dom(_path_data_array);
-        for (let i = 0; i < listing_dom.length; i++) {
-            let li = listing_dom[i];
-            root_container.appendChild(li);
-        }
+        render_global_listing_location_array();
     });
 });
 
@@ -893,3 +912,35 @@ document.body.addEventListener('keydown', function (event) {
         state.change_image_lock = false;
     }
 });
+
+let add_location_button = document.getElementById('add_location_button');
+if (add_location_button != null) {
+    add_location_button.addEventListener('click', function (event) {
+        let location_input = document.getElementById('add_location_input');
+        if (location_input == null) {
+            console.log('location input not found');
+            return;
+        }
+
+        let location_str = location_input.value;
+        if (location_str.length == 0) {
+            console.log('location input is empty');
+            return;
+        }
+
+        GLOBAL_LISTING_LOCATION_ARRAY.push(location_str);
+        render_global_listing_location_array();
+        // ELECTRON_REMOTE.dialog.showOpenDialog({
+        //     properties: ['openDirectory'],
+        // }, function (filepath_array) {
+        //     if (filepath_array == null) {
+        //         return;
+        //     }
+
+        //     for (let i = 0; i < filepath_array.length; i++) {
+        //         GLOBAL_LISTING_LOCATION_ARRAY.push(filepath_array[i]);
+        //         render_global_listing_location_array();
+        //     }
+        // });
+    });
+}
