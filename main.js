@@ -1,15 +1,15 @@
-const { app, BrowserWindow } = require('electron');
+const electron = require('electron');
 const path = require('path');
 
 const default_chromium_user_data_path = path.join(__dirname, 'chromium_user_data');
 console.log(default_chromium_user_data_path);
 
-app.setPath('userData', default_chromium_user_data_path);
+electron.app.setPath('userData', default_chromium_user_data_path);
 
 var browser_window;
 
 function createWindow() {
-    browser_window = new BrowserWindow({
+    browser_window = new electron.BrowserWindow({
         width: 1600,
         height: 900,
         webPreferences: {
@@ -22,7 +22,16 @@ function createWindow() {
             nativeWindowOpen: true,
             devTools: true,
             autoHideMenuBar: true,
+            preload: path.join(__dirname, 'preload.js'),
         },
+    });
+
+    electron.ipcMain.on('toggle_fullscreen', function () {
+        if (browser_window.isFullScreen()) {
+            browser_window.setFullScreen(false);
+        } else {
+            browser_window.setFullScreen(true);
+        }
     });
 
     // Hide the menu bar when in full screen mode
@@ -41,11 +50,11 @@ function createWindow() {
     // console.log(contents);
 }
 
-app.whenReady().then(() => {
+electron.app.whenReady().then(function () {
     createWindow();
 });
 
 // quitting the app when no windows are open on non-macOS platforms
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') { app.quit(); }
+electron.app.on('window-all-closed', function () {
+    if (process.platform !== 'darwin') { electron.app.quit(); }
 });

@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 // const { electron } = require('process');
-// const electron = require('electron');
-// const ELECTRON_REMOTE = require('electron');
+const ELETCTRON_PROCESS = require('process');
+const electron = require('electron');
 
 var state = {
     showing_image_absolute_path: null,
@@ -1506,7 +1506,8 @@ document.body.addEventListener('keydown', function (event) {
         state.change_image_lock = false;
     }
     else if (event.key === 'f') {
-
+        let window = electron.remote.getCurrentWindow();
+        window.setFullScreen(!window.isFullScreen());
     }
 });
 
