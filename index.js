@@ -687,12 +687,11 @@ function next_image_in_top_level_location(input_dict) {
                 });
 
                 if (found_location != null) {
-                    break;
+                    return found_location;
                 }
             } else if (child_file_info['type'] === 'regular_file') {
                 if (is_supported_image_file(child_filename)) {
-                    found_location = child_filepath;
-                    break;
+                    return child_filepath;
                 }
             } else {
                 console.error('unknown file type');
@@ -857,13 +856,76 @@ function next_image_in_top_level_location(input_dict) {
         }
 
         let _exclude_filepath = _parent;
-        let _indexing_location = os_path_split(_parent).parent;
+        let split_retval = os_path_split(_exclude_filepath);
+        let _exclude_filename = split_retval.filename;
+        let _indexing_location = split_retval.parent;
 
         while (is_in_top_level_location({
             'current_location': _indexing_location,
             'top_level_location': top_level_location,
             'ignore_case': true,
         })) {
+            let child_filename_array = fs.readdirSync(to_platform_path(_indexing_location));
+            // TOOD handle sorting
+            let current_idx = child_filename_array.indexOf(_exclude_filename);
+
+            if (current_idx < 0) {
+                console.error('current location not found in parent');
+                return;
+            }
+
+            let increment = 1;
+            if (backward) {
+                increment = -1;
+            }
+
+            while (true) {
+                current_idx += increment;
+                if (current_idx < 0) {
+                    break;
+                }
+
+                if (current_idx >= child_filename_array.length) {
+                    break;
+                }
+
+                let child_filename = child_filename_array[current_idx];
+                let child_filepath = _indexing_location + '/' + child_filename;
+
+
+                let child_file_info = get_path_info(child_filepath);
+
+                if (child_file_info == null) {
+                    console.error('child_file_info is null');
+                    return;
+                }
+
+                if (child_file_info['type'] === 'symbolic_link') {
+                    console.warn('TODO handle symbolic link');
+                    continue;
+                } else if (child_file_info['type'] === 'directory') {
+                    found_location = next_image_in_top_level_location({
+                        'current_location': child_filepath,
+                        'top_level_location': child_filepath,
+                        'backward': backward,
+                        'default_sorting_method': default_sorting_method,
+                        'saved_sorting_method_array': saved_sorting_method_array,
+                        'check_current_location': false,
+                    });
+
+                    if (found_location != null) {
+                        return found_location;
+                    }
+                } else if (child_file_info['type'] === 'regular_file') {
+                    if (is_supported_image_file(child_filename)) {
+                        return child_filepath;
+                    }
+                } else {
+                    console.error('unknown file type');
+                    continue;
+                }
+            }
+
             let _retval = next_image_in_top_level_location({
                 'current_location': _exclude_filepath,
                 'top_level_location': _indexing_location,
@@ -878,6 +940,7 @@ function next_image_in_top_level_location(input_dict) {
 
             let _retval2 = os_path_split(_indexing_location);
             _exclude_filepath = _indexing_location;
+            _exclude_filename = _retval2.filename;
             _indexing_location = _retval2['parent'];
         }
     }
