@@ -22,25 +22,16 @@ function createWindow() {
             nativeWindowOpen: true,
             devTools: true,
             autoHideMenuBar: true,
-            preload: path.join(__dirname, 'preload.js'),
         },
     });
 
-    electron.ipcMain.on('toggle_fullscreen', function () {
-        if (browser_window.isFullScreen()) {
-            browser_window.setFullScreen(false);
-        } else {
-            browser_window.setFullScreen(true);
-        }
-    });
-
     // Hide the menu bar when in full screen mode
-    browser_window.on('enter-full-screen', () => {
+    browser_window.on('enter-full-screen', function () {
         browser_window.setMenuBarVisibility(false);
     })
 
     // Show the menu bar when exiting full screen mode
-    browser_window.on('leave-full-screen', () => {
+    browser_window.on('leave-full-screen', function () {
         browser_window.setMenuBarVisibility(true);
     })
 
