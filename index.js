@@ -4,7 +4,11 @@ const path = require('path');
 // const electron = require('electron');
 // const ELECTRON_REMOTE = require('electron');
 
-var state = {};
+var state = {
+    showing_image_absolute_path: null,
+    showing_image_gallery_root: null,
+};
+
 var GLOBAL_LISTING_LOCATION_ARRAY = [];
 var IMAGE_EXTENSIONS = [
     'jpg',
@@ -15,6 +19,13 @@ var IMAGE_EXTENSIONS = [
     'webp',
     'tiff',
 ];
+
+const SORTING_METHOD_NONE = 0;
+const SORTING_METHOD_FILENAME = 1;
+const SORTING_METHOD_FILESIZE = 2;
+const SORTING_METHOD_GROUP_BY_EXTENSION_AND_SORT_BY_FILENAME = 3;
+const SORTING_METHOD_IGNORE_EXTENSION_AND_SORT_BY_NUMBER = 4;
+const SORTING_METHOD_GROUP_BY_FILE_TYPE_AND_SORT_BY_FILENAME = 5;
 
 function to_platform_path(inpath) {
     let platform_path_separator = '/';
@@ -124,6 +135,46 @@ function to_internal_path(inpath) {
     return retval;
 }
 
+/**
+ * @param {string} inpath
+ */
+function get_path_info(inpath) {
+    let retval = {
+        'type': 'unknown',
+        'size': null,
+        'last_modified': null,
+        'last_accessed': null,
+        'created': null,
+        'error': null,
+    };
+
+    // TODO handle ftp url
+    try {
+        let file_stat = fs.statSync(to_platform_path(inpath));
+        if (file_stat.isFile()) {
+            retval['type'] = 'regular_file';
+        } else if (file_stat.isSymbolicLink()) {
+            retval['type'] = 'symbolic_link';
+            // TODO add support for symbolic links
+        } else if (file_stat.isDirectory()) {
+            retval['type'] = 'directory';
+            retval['is_directory'] = true;
+        }
+
+        retval['size'] = file_stat.size;
+        retval['last_modified'] = file_stat.mtime;
+        retval['last_accessed'] = file_stat.atime;
+        retval['created'] = file_stat.ctime;
+
+        return retval;
+    } catch (error) {
+        console.log(error);
+        retval['error'] = error;
+    }
+
+    return retval;
+}
+
 function is_regular_file(filepath) {
     let path_info = get_path_info(filepath);
     if (path_info['type'] == 'regular_file') {
@@ -159,48 +210,6 @@ function sort_filename_array_method0(file_info_array) {
     for (let i = 0; i < tmp_array.length; i++) {
         let tmp = tmp_array[i];
         retval.push(tmp['value']);
-    }
-
-    return retval;
-}
-
-/**
- * @param {string} inpath
- */
-function get_path_info(inpath) {
-    let retval = {
-        'type': 'unknown',
-        'size': null,
-        'last_modified': null,
-        'last_accessed': null,
-        'created': null,
-        'error': null,
-    };
-
-    // TODO handle ftp url
-    try {
-        let file_stat = fs.statSync(to_platform_path(inpath));
-        if (file_stat.isFile()) {
-            retval['type'] = 'regular_file';
-        } else if (file_stat.isSymbolicLink()) {
-            retval['type'] = 'symbolic_link';
-            // TODO add support for symbolic links
-        } else if (file_stat.isDirectory()) {
-            retval['type'] = 'directory';
-            retval['is_directory'] = true;
-        } else {
-            retval['type'] = 'unknown';
-        }
-
-        retval['size'] = file_stat.size;
-        retval['last_modified'] = file_stat.mtime;
-        retval['last_accessed'] = file_stat.atime;
-        retval['created'] = file_stat.ctime;
-
-        return retval;
-    } catch (error) {
-        console.log(error);
-        retval['error'] = error;
     }
 
     return retval;
@@ -445,6 +454,345 @@ function show_directory_first_image(file_info) {
     });
 }
 
+function is_in_top_level_location(input_dict) {
+    if (input_dict == null) {
+        console.error('input_dict is null');
+        return;
+    }
+
+    let current_location = input_dict['current_location'];
+    let top_level_location = input_dict['top_level_location'];
+    let ignore_case = input_dict['ignore_case'];
+
+    if (current_location == null) {
+        console.error('current_location is null');
+        return;
+    }
+
+    if (typeof (current_location) !== 'string') {
+        console.error('current_location is not a string');
+        return;
+    }
+
+    if (top_level_location == null) {
+        console.error('top_level_location is null');
+        return;
+    }
+
+    if (typeof (top_level_location) !== 'string') {
+        console.error('top_level_location is not a string');
+        return;
+    }
+
+    if (ignore_case == null) {
+        ignore_case = false;
+    }
+
+    if (typeof (ignore_case) !== 'boolean') {
+        console.error('ignore_case is not a boolean');
+        return;
+    }
+
+    let current_location_parts = [];
+    current_location = current_location.replaceAll('\\', '/');
+    let _parts = current_location.split('/');
+    for (let i = 0; i < _parts.length; i++) {
+        let _part = _parts[i];
+        if (_part.length == 0) {
+            continue;
+        }
+
+        if (ignore_case) {
+            // TODO handle ASCII and unicode - only ASCII is handled here
+            _part = _part.toUpperCase();
+        }
+
+        current_location_parts.push(_part);
+    }
+
+    let top_level_location_parts = [];
+    top_level_location = top_level_location.replaceAll('\\', '/');
+    _parts = top_level_location.split('/');
+    for (let i = 0; i < _parts.length; i++) {
+        let _part = _parts[i];
+        if (_part.length == 0) {
+            continue;
+        }
+
+        if (ignore_case) {
+            // TODO handle ASCII and unicode - only ASCII is handled here
+            _part = _part.toUpperCase();
+        }
+
+        top_level_location_parts.push(_part);
+    }
+
+    if (current_location_parts.length < top_level_location_parts.length) {
+        return false;
+    }
+
+    for (let i = 0; i < top_level_location_parts.length; i++) {
+        let _part = top_level_location_parts[i];
+        if (current_location_parts[i] !== _part) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function next_image_in_top_level_location(input_dict) {
+    console.log(input_dict);
+    if (input_dict == null) {
+        console.error('input_dict is null');
+        return;
+    }
+
+    let current_location = input_dict['current_location'];
+    let top_level_location = input_dict['top_level_location'];
+    let backward = input_dict['backward'];
+    let default_sorting_method = input_dict['default_sorting_method'];
+    let saved_sorting_method_array = input_dict['saved_sorting_method_array'];
+
+    if (current_location == null) {
+        console.error('current_location is null');
+        return;
+    }
+
+    if (typeof (current_location) !== 'string') {
+        console.error('current_location is not a string');
+        return;
+    }
+
+    // TODO handle FTP and network path and archive file
+    if (!fs.existsSync(current_location)) {
+        console.error('current_location does not exist');
+        return;
+    }
+
+    if (top_level_location == null) {
+        console.error('top_level_location is null');
+        return;
+    }
+
+    if (typeof (top_level_location) !== 'string') {
+        console.error('top_level_location is not a string');
+        return;
+    }
+
+    // TODO handle FTP and network path and archive file
+    if (!fs.existsSync(top_level_location)) {
+        console.error('top_level_location does not exist');
+        return;
+    }
+
+    if (backward == null) {
+        backward = false;
+    }
+
+    if (default_sorting_method == null) {
+        default_sorting_method = SORTING_METHOD_NONE;
+    }
+
+    if (saved_sorting_method_array == null) {
+        // saved_sorting_method_array = [];
+    } else {
+        if (saved_sorting_method_array.length == null) {
+            saved_sorting_method_array = [];
+        }
+
+        if (typeof (saved_sorting_method_array.length) !== 'number') {
+            saved_sorting_method_array = [];
+        }
+
+        if (saved_sorting_method_array.length == 0) {
+            saved_sorting_method_array = null;
+        }
+    }
+
+    let current_location_info = get_path_info(current_location);
+    if (current_location_info == null) {
+        console.error('current_location_info is null');
+        return;
+    }
+
+    let _parent = null;
+    let _filename = null;
+
+    if (current_location_info['type'] === 'directory') {
+        _parent = current_location;
+    } else {
+        // TODO handle unix root path /
+        let _retval = os_path_split(current_location);
+        _parent = _retval['parent'];
+        _filename = _retval['filename'];
+
+        if (_filename == null) {
+            console.log('invalid path');
+            return;
+        }
+    }
+
+    if (_parent == null) {
+        console.log('invalid path');
+        return;
+    }
+
+    if (!is_in_top_level_location({
+        'current_location': _parent,
+        'top_level_location': top_level_location,
+        'ignore_case': true,
+    })) {
+        if (input_dict['r'] == null) {
+            console.log('not in top level location');
+        }
+        // TODO handle loopback
+        return;
+    }
+
+    let child_filename_array = fs.readdirSync(to_platform_path(_parent));
+    let sorting_method = default_sorting_method;
+    if (saved_sorting_method_array != null) {
+        if (saved_sorting_method_array.length > 0) {
+            for (let i = 0; i < saved_sorting_method_array; i++) {
+                let saved_sorting_method_info = saved_sorting_method_array[i];
+                if (saved_sorting_method_info.location == null) {
+                    continue;
+                }
+
+                if (typeof (saved_sorting_method_info.location) !== 'string') {
+                    continue;
+                }
+
+                if (to_platform_path(saved_sorting_method_info.location) === to_platform_path(_parent)) {
+                    sorting_method = saved_sorting_method_info.method;
+                    // TODO validate sorting_method
+                    break;
+                }
+            }
+        }
+    }
+
+    if (sorting_method === SORTING_METHOD_NONE) {
+        // TODO
+    } else {
+        // TODO
+        console.warn('TODO handle sorting_method');
+    }
+
+    if (child_filename_array.length === 0) {
+        console.log('no child file found');
+        // TODO handle deleted file and directory
+        return;
+    }
+
+    let current_idx = 0;
+    if (current_location_info['type'] !== 'directory') {
+        current_idx = child_filename_array.indexOf(_filename);
+    }
+
+    if (current_idx < 0) {
+        console.error('current location not found in parent');
+        // TODO pass known index and show the next entry in case we deleted the current file
+        return;
+    }
+
+    let found_location = null;
+
+    if (backward) {
+        current_idx--;
+        for (let i = current_idx; i >= 0; i--) {
+            let child_filename = child_filename_array[i];
+            let child_filepath = _parent + '/' + child_filename;
+
+            let child_file_info = get_path_info(child_filepath);
+
+            if (child_file_info == null) {
+                console.error('child_file_info is null');
+                return;
+            }
+
+            if (child_file_info['type'] === 'symbolic_link') {
+                console.warn('TODO handle symbolic link');
+                continue;
+            } else if (child_file_info['type'] === 'directory') {
+                found_location = next_image_in_top_level_location({
+                    'current_location': child_filepath,
+                    'top_level_location': child_filepath,
+                    'backward': backward,
+                    'default_sorting_method': default_sorting_method,
+                    'saved_sorting_method_array': saved_sorting_method_array,
+                    'r': true,
+                });
+
+                if (found_location != null) {
+                    break;
+                }
+            } else if (child_file_info['type'] === 'regular_file') {
+                if (is_supported_image_file(child_filename)) {
+                    found_location = child_filepath;
+                    break;
+                }
+            } else {
+                console.error('unknown file type');
+                continue;
+            }
+        }
+    } else {
+        current_idx++;
+        for (let i = current_idx; i < child_filename_array.length; i++) {
+            let child_filename = child_filename_array[i];
+            let child_filepath = _parent + '/' + child_filename;
+
+            let child_file_info = get_path_info(child_filepath);
+
+            if (child_file_info == null) {
+                console.error('child_file_info is null');
+                return;
+            }
+
+            if (child_file_info['type'] === 'symbolic_link') {
+                console.warn('TODO handle symbolic link');
+                continue;
+            } else if (child_file_info['type'] === 'directory') {
+                found_location = next_image_in_top_level_location({
+                    'current_location': child_filepath,
+                    'top_level_location': child_filepath,
+                    'backward': backward,
+                    'default_sorting_method': default_sorting_method,
+                    'saved_sorting_method_array': saved_sorting_method_array,
+                    'r': true,
+                });
+
+                if (found_location != null) {
+                    break;
+                }
+            } else if (child_file_info['type'] === 'regular_file') {
+                if (is_supported_image_file(child_filename)) {
+                    found_location = child_filepath;
+                    break;
+                }
+            } else {
+                console.error('unknown file type');
+                continue;
+            }
+        }
+    }
+
+    if (found_location == null) {
+        let _retval = os_path_split(_parent);
+        return next_image_in_top_level_location({
+            'current_location': _retval.parent,
+            'top_level_location': top_level_location,
+            'backward': backward,
+            'default_sorting_method': default_sorting_method,
+            'saved_sorting_method_array': saved_sorting_method_array,
+        });
+    }
+
+    return found_location;
+}
+
 function next_image(backward) {
     let preview_panel = document.getElementById('preview_view');
     if (preview_panel == null) {
@@ -458,7 +806,6 @@ function next_image(backward) {
         console.log('no image is showing');
         return;
     }
-
 
     let _retval = os_path_split(current_showing_image_absolute_path);
     let current_showing_image_directory = _retval['parent'];
@@ -528,6 +875,31 @@ function next_image(backward) {
     return show_single_image({
         'filepath': next_image_filepath,
         'parent': current_showing_image_directory,
+        'gallery_root': state.showing_image_gallery_root,
+    });
+}
+
+function next_image2(backward) {
+    let preview_panel = document.getElementById('preview_view');
+    if (preview_panel == null) {
+        console.log('preview panel not found');
+        return;
+    }
+
+    let next_image_filepath = next_image_in_top_level_location({
+        'current_location': state.showing_image_absolute_path,
+        'top_level_location': state.showing_image_gallery_root,
+        'backward': backward,
+    });
+
+    if (next_image_filepath == null) {
+        console.log('next image filepath not found');
+        return;
+    }
+
+    return show_single_image({
+        'filepath': next_image_filepath,
+        'parent': os_path_split(next_image_filepath).parent,
         'gallery_root': state.showing_image_gallery_root,
     });
 }
@@ -885,11 +1257,20 @@ document.body.addEventListener('keydown', function (event) {
 
         state.change_image_lock = true;
         try {
-            (function () {
-                if (next_image()) {
-                    event.preventDefault();
-                }
-            })();
+            if (event.ctrlKey) {
+                (function () {
+                    if (next_image2(false)) {
+                        event.preventDefault();
+                    }
+                })();
+
+            } else {
+                (function () {
+                    if (next_image(false)) {
+                        event.preventDefault();
+                    }
+                })();
+            }
         } catch (error) {
             console.log(error);
         }
@@ -905,11 +1286,20 @@ document.body.addEventListener('keydown', function (event) {
 
         state.change_image_lock = true;
         try {
-            (function () {
-                if (next_image(true)) {
-                    event.preventDefault();
-                }
-            })();
+            if (event.ctrlKey) {
+                (function () {
+                    if (next_image2(true)) {
+                        event.preventDefault();
+                    }
+                })();
+
+            } else {
+                (function () {
+                    if (next_image(true)) {
+                        event.preventDefault();
+                    }
+                })();
+            }
         } catch (error) {
             console.log(error);
         }
