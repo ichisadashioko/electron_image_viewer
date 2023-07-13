@@ -349,6 +349,50 @@ function show_single_image(file_info) {
     img.src = to_web_friendly_path(filepath);
     while (preview_panel.firstChild) { preview_panel.removeChild(preview_panel.firstChild); }
     preview_panel.appendChild(img);
+
+    img.addEventListener('mousedown', function (event) {
+        if (event.button === 0) {
+            // left click
+            // TODO allow user to configure this behavior
+            if (state.change_image_lock) {
+                console.log('next image lock is on');
+                return;
+            }
+
+            state.change_image_lock = true;
+            try {
+                (function () {
+                    if (next_image()) {
+                        event.preventDefault();
+                    }
+                })();
+            } catch (error) {
+                console.log(error);
+            }
+
+            state.change_image_lock = false;
+        } else if (event.button === 2) {
+            // right click
+            // TODO allow user to configure this behavior
+            if (state.change_image_lock) {
+                console.log('next image lock is on');
+                return;
+            }
+
+            state.change_image_lock = true;
+            try {
+                (function () {
+                    if (next_image(true)) {
+                        event.preventDefault();
+                    }
+                })();
+            } catch (error) {
+                console.log(error);
+            }
+
+            state.change_image_lock = false;
+        }
+    });
     return true;
 }
 
@@ -736,6 +780,7 @@ function render_global_listing_location_array() {
     }
 
     let listing_dom = generate_listing_dom(_location_info_array);
+    root_container.innerHTML = '';
     for (let i = 0; i < listing_dom.length; i++) {
         let li = listing_dom[i];
         root_container.appendChild(li);
@@ -822,7 +867,7 @@ document.body.addEventListener('keydown', function (event) {
 
     // toggle navigation panel visibility
     if (event.key === 'n') {
-        let navigation_panel = document.getElementById('listing_view');
+        let navigation_panel = document.getElementById('popup_container');
         if (navigation_panel == null) {
             console.log('navigation panel not found');
             return;
@@ -911,6 +956,9 @@ document.body.addEventListener('keydown', function (event) {
 
         state.change_image_lock = false;
     }
+    else if (event.key === 'f') {
+
+    }
 });
 
 let add_location_button = document.getElementById('add_location_button');
@@ -928,7 +976,10 @@ if (add_location_button != null) {
             return;
         }
 
-        GLOBAL_LISTING_LOCATION_ARRAY.push(location_str);
+        if (!GLOBAL_LISTING_LOCATION_ARRAY.includes(location_str)) {
+            GLOBAL_LISTING_LOCATION_ARRAY.push(location_str);
+        }
+
         render_global_listing_location_array();
         // ELECTRON_REMOTE.dialog.showOpenDialog({
         //     properties: ['openDirectory'],

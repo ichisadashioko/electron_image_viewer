@@ -38,11 +38,11 @@ body {
     border-style: solid;
 }
 
-#listing_view.hidden {
+#popup_container.hidden {
     display: none !important;
 }
 
-#listing_view {
+#popup_container {
     /* position: absolute; */
     /* position: sticky; */
     position: fixed;
@@ -57,8 +57,8 @@ body {
     overflow: scroll;
 }
 
-/* TODO make custom scroll bar inside #listing_view */
-#listing_view::-webkit-scrollbar {
+/* TODO make custom scroll bar inside #popup_container */
+#popup_container::-webkit-scrollbar {
     width: 0px;
     background: none;
 }
@@ -112,4 +112,10 @@ body {
     /* scale image to fit within container while maintaining aspect ratio */
     width: 100vw;
     height: 100vh;
+}
+
+#add_location_button, #add_location_input {
+    color: #ffffff;
+    background-color: #000000;
+    border-color: #ffffff;
 }
