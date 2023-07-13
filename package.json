@@ -6,6 +6,6 @@
     "start": "electron ."
   },
   "dependencies": {
-    "electron": "22.2.0"
+    "electron": "9.4.4"
   }
 }

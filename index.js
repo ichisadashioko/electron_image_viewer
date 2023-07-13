@@ -494,7 +494,7 @@ function is_in_top_level_location(input_dict) {
     }
 
     let current_location_parts = [];
-    current_location = current_location.replaceAll('\\', '/');
+    current_location = current_location.replace(/[\/\\\\]+/g, '/')
     let _parts = current_location.split('/');
     for (let i = 0; i < _parts.length; i++) {
         let _part = _parts[i];
@@ -511,7 +511,7 @@ function is_in_top_level_location(input_dict) {
     }
 
     let top_level_location_parts = [];
-    top_level_location = top_level_location.replaceAll('\\', '/');
+    top_level_location = top_level_location.replace(/[\/\\\\]+/g, '/')
     _parts = top_level_location.split('/');
     for (let i = 0; i < _parts.length; i++) {
         let _part = _parts[i];
@@ -945,21 +945,7 @@ function next_image_in_top_level_location(input_dict) {
         }
     }
 
-
     return null;
-
-    if (found_location == null) {
-        let _retval = os_path_split(_parent);
-        return next_image_in_top_level_location({
-            'current_location': _retval.parent,
-            'top_level_location': top_level_location,
-            'backward': backward,
-            'default_sorting_method': default_sorting_method,
-            'saved_sorting_method_array': saved_sorting_method_array,
-        });
-    }
-
-    return found_location;
 }
 
 function next_image(backward) {
