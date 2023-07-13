@@ -542,10 +542,15 @@ function is_in_top_level_location(input_dict) {
 }
 
 function next_image_in_top_level_location(input_dict) {
-    console.log(input_dict);
+    // console.log(input_dict);
     if (input_dict == null) {
         console.error('input_dict is null');
         return;
+    }
+
+    let check_current_location = input_dict['check_current_location'];
+    if (check_current_location == null) {
+        check_current_location = true;
     }
 
     let current_location = input_dict['current_location'];
@@ -554,20 +559,26 @@ function next_image_in_top_level_location(input_dict) {
     let default_sorting_method = input_dict['default_sorting_method'];
     let saved_sorting_method_array = input_dict['saved_sorting_method_array'];
 
-    if (current_location == null) {
-        console.error('current_location is null');
-        return;
-    }
+    console.log(current_location);
+    console.log('- ' + top_level_location);
 
-    if (typeof (current_location) !== 'string') {
-        console.error('current_location is not a string');
-        return;
-    }
+    if (check_current_location) {
+        if (current_location == null) {
+            console.error('current_location is null');
+            return;
+        }
 
-    // TODO handle FTP and network path and archive file
-    if (!fs.existsSync(current_location)) {
-        console.error('current_location does not exist');
-        return;
+        if (typeof (current_location) !== 'string') {
+            current_location = null;
+            console.error('current_location is not a string');
+            return;
+        }
+
+        // TODO handle FTP and network path and archive file
+        if (!fs.existsSync(current_location)) {
+            console.error('current_location does not exist');
+            return;
+        }
     }
 
     if (top_level_location == null) {
@@ -610,174 +621,269 @@ function next_image_in_top_level_location(input_dict) {
         }
     }
 
-    let current_location_info = get_path_info(current_location);
-    if (current_location_info == null) {
-        console.error('current_location_info is null');
-        return;
-    }
 
-    let _parent = null;
-    let _filename = null;
+    if (!check_current_location) {
+        let _parent = top_level_location;
+        let child_filename_array = fs.readdirSync(to_platform_path(_parent));
+        let sorting_method = default_sorting_method;
+        if (saved_sorting_method_array != null) {
+            if (saved_sorting_method_array.length > 0) {
+                for (let i = 0; i < saved_sorting_method_array; i++) {
+                    let saved_sorting_method_info = saved_sorting_method_array[i];
+                    if (saved_sorting_method_info.location == null) {
+                        continue;
+                    }
 
-    if (current_location_info['type'] === 'directory') {
-        _parent = current_location;
-    } else {
-        // TODO handle unix root path /
+                    if (typeof (saved_sorting_method_info.location) !== 'string') {
+                        continue;
+                    }
+
+                    if (to_platform_path(saved_sorting_method_info.location) === to_platform_path(_parent)) {
+                        sorting_method = saved_sorting_method_info.method;
+                        // TODO validate sorting_method
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (sorting_method === SORTING_METHOD_NONE) {
+            // TODO
+        } else {
+            // TODO
+            console.warn('TODO handle sorting_method');
+        }
+
+        if (child_filename_array.length === 0) {
+            console.log('no child file found');
+            // TODO handle deleted file and directory
+            return;
+        }
+
+        let found_location = null;
+
+        for (let i = 0; i < child_filename_array.length; i++) {
+            let child_filename = child_filename_array[i];
+            let child_filepath = _parent + '/' + child_filename;
+
+            let child_file_info = get_path_info(child_filepath);
+
+            if (child_file_info == null) {
+                console.error('child_file_info is null');
+                return;
+            }
+
+            if (child_file_info['type'] === 'symbolic_link') {
+                console.warn('TODO handle symbolic link');
+                continue;
+            } else if (child_file_info['type'] === 'directory') {
+                found_location = next_image_in_top_level_location({
+                    'current_location': child_filepath,
+                    'top_level_location': child_filepath,
+                    'backward': backward,
+                    'default_sorting_method': default_sorting_method,
+                    'saved_sorting_method_array': saved_sorting_method_array,
+                    'check_current_location': false,
+                });
+
+                if (found_location != null) {
+                    break;
+                }
+            } else if (child_file_info['type'] === 'regular_file') {
+                if (is_supported_image_file(child_filename)) {
+                    found_location = child_filepath;
+                    break;
+                }
+            } else {
+                console.error('unknown file type');
+                continue;
+            }
+        }
+
+        return found_location;
+    } {
+        let current_location_info = get_path_info(current_location);
+        if (current_location_info == null) {
+            console.error('current_location_info is null');
+            return;
+        }
+
+        let _parent = null;
+        let _filename = null;
         let _retval = os_path_split(current_location);
         _parent = _retval['parent'];
         _filename = _retval['filename'];
 
-        if (_filename == null) {
+        if (_parent == null) {
             console.log('invalid path');
             return;
         }
-    }
 
-    if (_parent == null) {
-        console.log('invalid path');
-        return;
-    }
-
-    if (!is_in_top_level_location({
-        'current_location': _parent,
-        'top_level_location': top_level_location,
-        'ignore_case': true,
-    })) {
-        if (input_dict['r'] == null) {
+        if (!is_in_top_level_location({
+            'current_location': _parent,
+            'top_level_location': top_level_location,
+            'ignore_case': true,
+        })) {
             console.log('not in top level location');
+            // TODO handle loopback
+            return;
         }
-        // TODO handle loopback
-        return;
-    }
 
-    let child_filename_array = fs.readdirSync(to_platform_path(_parent));
-    let sorting_method = default_sorting_method;
-    if (saved_sorting_method_array != null) {
-        if (saved_sorting_method_array.length > 0) {
-            for (let i = 0; i < saved_sorting_method_array; i++) {
-                let saved_sorting_method_info = saved_sorting_method_array[i];
-                if (saved_sorting_method_info.location == null) {
+
+        let child_filename_array = fs.readdirSync(to_platform_path(_parent));
+        let sorting_method = default_sorting_method;
+        if (saved_sorting_method_array != null) {
+            if (saved_sorting_method_array.length > 0) {
+                for (let i = 0; i < saved_sorting_method_array; i++) {
+                    let saved_sorting_method_info = saved_sorting_method_array[i];
+                    if (saved_sorting_method_info.location == null) {
+                        continue;
+                    }
+
+                    if (typeof (saved_sorting_method_info.location) !== 'string') {
+                        continue;
+                    }
+
+                    if (to_platform_path(saved_sorting_method_info.location) === to_platform_path(_parent)) {
+                        sorting_method = saved_sorting_method_info.method;
+                        // TODO validate sorting_method
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (sorting_method === SORTING_METHOD_NONE) {
+            // TODO
+        } else {
+            // TODO
+            console.warn('TODO handle sorting_method');
+        }
+
+        if (child_filename_array.length === 0) {
+            console.log('no child file found');
+            // TODO handle deleted file and directory
+            return;
+        }
+
+        let current_idx = child_filename_array.indexOf(_filename);
+
+        if (current_idx < 0) {
+            console.error('current location not found in parent');
+            // TODO pass known index and show the next entry in case we deleted the current file
+            return;
+        }
+
+        let found_location = null;
+
+        if (backward) {
+            current_idx--;
+            for (let i = current_idx; i >= 0; i--) {
+                let child_filename = child_filename_array[i];
+                let child_filepath = _parent + '/' + child_filename;
+
+                let child_file_info = get_path_info(child_filepath);
+
+                if (child_file_info == null) {
+                    console.error('child_file_info is null');
+                    return;
+                }
+
+                if (child_file_info['type'] === 'symbolic_link') {
+                    console.warn('TODO handle symbolic link');
+                    continue;
+                } else if (child_file_info['type'] === 'directory') {
+                    found_location = next_image_in_top_level_location({
+                        'current_location': child_filepath,
+                        'top_level_location': child_filepath,
+                        'backward': backward,
+                        'default_sorting_method': default_sorting_method,
+                        'saved_sorting_method_array': saved_sorting_method_array,
+                        'r': true,
+                    });
+
+                    if (found_location != null) {
+                        break;
+                    }
+                } else if (child_file_info['type'] === 'regular_file') {
+                    if (is_supported_image_file(child_filename)) {
+                        found_location = child_filepath;
+                        break;
+                    }
+                } else {
+                    console.error('unknown file type');
                     continue;
                 }
+            }
+        } else {
+            current_idx++;
+            for (let i = current_idx; i < child_filename_array.length; i++) {
+                let child_filename = child_filename_array[i];
+                let child_filepath = _parent + '/' + child_filename;
 
-                if (typeof (saved_sorting_method_info.location) !== 'string') {
+                let child_file_info = get_path_info(child_filepath);
+
+                if (child_file_info == null) {
+                    console.error('child_file_info is null');
+                    return;
+                }
+
+                if (child_file_info['type'] === 'symbolic_link') {
+                    console.warn('TODO handle symbolic link');
+                    continue;
+                } else if (child_file_info['type'] === 'directory') {
+                    found_location = next_image_in_top_level_location({
+                        'current_location': child_filepath,
+                        'top_level_location': child_filepath,
+                        'backward': backward,
+                        'default_sorting_method': default_sorting_method,
+                        'saved_sorting_method_array': saved_sorting_method_array,
+                        'check_current_location': false,
+                    });
+
+                    if (found_location != null) {
+                        break;
+                    }
+                } else if (child_file_info['type'] === 'regular_file') {
+                    if (is_supported_image_file(child_filename)) {
+                        found_location = child_filepath;
+                        break;
+                    }
+                } else {
+                    console.error('unknown file type');
                     continue;
                 }
-
-                if (to_platform_path(saved_sorting_method_info.location) === to_platform_path(_parent)) {
-                    sorting_method = saved_sorting_method_info.method;
-                    // TODO validate sorting_method
-                    break;
-                }
             }
+        }
+
+        let _exclude_filepath = _parent;
+        let _indexing_location = os_path_split(_parent).parent;
+
+        while (is_in_top_level_location({
+            'current_location': _indexing_location,
+            'top_level_location': top_level_location,
+            'ignore_case': true,
+        })) {
+            let _retval = next_image_in_top_level_location({
+                'current_location': _exclude_filepath,
+                'top_level_location': _indexing_location,
+                'backward': backward,
+                'default_sorting_method': default_sorting_method,
+                'saved_sorting_method_array': saved_sorting_method_array,
+            })
+
+            if (_retval != null) {
+                return _retval;
+            }
+
+            let _retval2 = os_path_split(_indexing_location);
+            _exclude_filepath = _indexing_location;
+            _indexing_location = _retval2['parent'];
         }
     }
 
-    if (sorting_method === SORTING_METHOD_NONE) {
-        // TODO
-    } else {
-        // TODO
-        console.warn('TODO handle sorting_method');
-    }
 
-    if (child_filename_array.length === 0) {
-        console.log('no child file found');
-        // TODO handle deleted file and directory
-        return;
-    }
-
-    let current_idx = 0;
-    if (current_location_info['type'] !== 'directory') {
-        current_idx = child_filename_array.indexOf(_filename);
-    }
-
-    if (current_idx < 0) {
-        console.error('current location not found in parent');
-        // TODO pass known index and show the next entry in case we deleted the current file
-        return;
-    }
-
-    let found_location = null;
-
-    if (backward) {
-        current_idx--;
-        for (let i = current_idx; i >= 0; i--) {
-            let child_filename = child_filename_array[i];
-            let child_filepath = _parent + '/' + child_filename;
-
-            let child_file_info = get_path_info(child_filepath);
-
-            if (child_file_info == null) {
-                console.error('child_file_info is null');
-                return;
-            }
-
-            if (child_file_info['type'] === 'symbolic_link') {
-                console.warn('TODO handle symbolic link');
-                continue;
-            } else if (child_file_info['type'] === 'directory') {
-                found_location = next_image_in_top_level_location({
-                    'current_location': child_filepath,
-                    'top_level_location': child_filepath,
-                    'backward': backward,
-                    'default_sorting_method': default_sorting_method,
-                    'saved_sorting_method_array': saved_sorting_method_array,
-                    'r': true,
-                });
-
-                if (found_location != null) {
-                    break;
-                }
-            } else if (child_file_info['type'] === 'regular_file') {
-                if (is_supported_image_file(child_filename)) {
-                    found_location = child_filepath;
-                    break;
-                }
-            } else {
-                console.error('unknown file type');
-                continue;
-            }
-        }
-    } else {
-        current_idx++;
-        for (let i = current_idx; i < child_filename_array.length; i++) {
-            let child_filename = child_filename_array[i];
-            let child_filepath = _parent + '/' + child_filename;
-
-            let child_file_info = get_path_info(child_filepath);
-
-            if (child_file_info == null) {
-                console.error('child_file_info is null');
-                return;
-            }
-
-            if (child_file_info['type'] === 'symbolic_link') {
-                console.warn('TODO handle symbolic link');
-                continue;
-            } else if (child_file_info['type'] === 'directory') {
-                found_location = next_image_in_top_level_location({
-                    'current_location': child_filepath,
-                    'top_level_location': child_filepath,
-                    'backward': backward,
-                    'default_sorting_method': default_sorting_method,
-                    'saved_sorting_method_array': saved_sorting_method_array,
-                    'r': true,
-                });
-
-                if (found_location != null) {
-                    break;
-                }
-            } else if (child_file_info['type'] === 'regular_file') {
-                if (is_supported_image_file(child_filename)) {
-                    found_location = child_filepath;
-                    break;
-                }
-            } else {
-                console.error('unknown file type');
-                continue;
-            }
-        }
-    }
+    return null;
 
     if (found_location == null) {
         let _retval = os_path_split(_parent);
@@ -886,11 +992,15 @@ function next_image2(backward) {
         return;
     }
 
+    console.log('====================================================');
+
     let next_image_filepath = next_image_in_top_level_location({
         'current_location': state.showing_image_absolute_path,
         'top_level_location': state.showing_image_gallery_root,
         'backward': backward,
     });
+
+    console.log('====================================================');
 
     if (next_image_filepath == null) {
         console.log('next image filepath not found');
