@@ -4,3 +4,9 @@ user_data
 chromium_user_data
 .git
 .ipynb_checkpoints
+*.tsv
+stop
+assets
+*.json
+*.pickle
+*.gz

@@ -26,6 +26,8 @@ const SORTING_METHOD_FILESIZE = 2;
 const SORTING_METHOD_GROUP_BY_EXTENSION_AND_SORT_BY_FILENAME = 3;
 const SORTING_METHOD_IGNORE_EXTENSION_AND_SORT_BY_NUMBER = 4;
 const SORTING_METHOD_GROUP_BY_FILE_TYPE_AND_SORT_BY_FILENAME = 5;
+const SORTING_METHOD_MODIFICATION_TIME = 6;
+const SORTING_METHOD_CREATION_TIME = 7;
 
 function to_platform_path(inpath) {
     let platform_path_separator = '/';
@@ -342,7 +344,7 @@ function show_single_image(file_info) {
     }
 
     // TODO should we error check here?
-    let filepath = file_info['filepath'];
+    let filepath = to_platform_path(file_info['filepath']);
     let parent_path = file_info['parent'];
     let gallery_root = file_info['gallery_root'];
 
@@ -358,6 +360,8 @@ function show_single_image(file_info) {
     img.src = to_web_friendly_path(filepath);
     while (preview_panel.firstChild) { preview_panel.removeChild(preview_panel.firstChild); }
     preview_panel.appendChild(img);
+
+    document.title = filepath;
 
     img.addEventListener('mousedown', function (event) {
         if (event.button === 0) {
@@ -1231,6 +1235,27 @@ function generate_listing_dom(path_data_array) {
             // TODO option to preview all images in directory
 
             console.log(local_path);
+
+            if (event.ctrlKey) {
+                console.log('ctrl key pressed');
+                let first_image_filepath = next_image_in_top_level_location({
+                    'current_location': null,
+                    'top_level_location': local_path,
+                    'check_current_location': false,
+                    'backward': false,
+                })
+
+                console.log(first_image_filepath);
+                if (first_image_filepath == null) { return; }
+                show_single_image({
+                    'filepath': first_image_filepath,
+                    'parent': os_path_split(local_path).parent,
+                    'gallery_root': gallery_root,
+                })
+
+                return;
+            }
+
             let path_info = get_path_info(local_path);
             if (path_info['type'] == 'directory') {
                 console.log('directory');
@@ -1451,7 +1476,6 @@ document.body.addEventListener('keydown', function (event) {
                         event.preventDefault();
                     }
                 })();
-
             } else {
                 (function () {
                     if (next_image(true)) {
@@ -1543,5 +1567,19 @@ if (add_location_button != null) {
         //         render_global_listing_location_array();
         //     }
         // });
+    });
+}
+
+let hide_popup_button = document.getElementById('hide_popup_button');
+if (hide_popup_button != null) {
+    hide_popup_button.addEventListener('click', function (event) {
+        let navigation_panel = document.getElementById('popup_container');
+        if (navigation_panel == null) {
+            console.log('navigation panel not found');
+            return;
+        }
+
+        // adding and removing hidden class
+        navigation_panel.classList.toggle('hidden');
     });
 }
