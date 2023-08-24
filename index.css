@@ -32,10 +32,13 @@ body {
 }
 
 .display_name:hover {
-    background-color: rgba(0, 0, 0, 0.7);
-    border-color: #00ff00;
-    border-width: 1px;
-    border-style: solid;
+    background-color: rgba(0, 255, 0, 0.2);
+    /* color: #eeeeee !important; */
+    /* color: #eeeeee !important; */
+    /* background-color: rgba(0, 0, 0, 0.7); */
+    /* border-color: #00ff00; */
+    /* border-width: 1px; */
+    /* border-style: solid; */
 }
 
 #popup_container.hidden {
@@ -114,8 +117,21 @@ body {
     height: 100vh;
 }
 
-#add_location_button, #add_location_input {
+#add_location_button,
+#add_location_input {
     color: #ffffff;
     background-color: #000000;
     border-color: #ffffff;
+}
+
+.section_container {
+    margin: 5px;
+}
+
+.section_container:hover {
+    background-color: rgba(0, 255, 0, 0.5)
+}
+
+.ui_text {
+    font-size: 16px;
 }

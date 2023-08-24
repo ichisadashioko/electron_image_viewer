@@ -9,17 +9,31 @@
 <body>
     <div id="root">
         <div id="popup_container">
-            <div>
-                <input id="add_location_input" type="text" placeholder="add location">
-                <button id="add_location_button">add location</button>
-                <button id="hide_popup_button">hide</button>
+            <div class="section_container">
+                <input id="add_location_input" type="text" placeholder="add location" class="ui_text">
+                <button id="add_location_button" class="ui_text">add location</button>
+                <button id="hide_popup_button" class="ui_text">hide</button>
+            </div>
+            <div class="section_container">
+                <div>
+                    <input type="checkbox" name="use_next_image2_fallback" id="use_next_image2_fallback">
+                    <label for="use_next_image2_fallback" class="ui_text">use next image2 fallback</label>
+                </div>
+                <div>
+                    <input type="checkbox" name="loop_images_in_current_directory" id="loop_images_in_current_directory">
+                    <label for="loop_images_in_current_directory" class="ui_text">loop_images_in_current_directory</label>
+                </div>
+                <div>
+                    <input type="checkbox" name="read_next_image_to_cache_in_ram" id="read_next_image_to_cache_in_ram">
+                    <label for="read_next_image_to_cache_in_ram" class="ui_text">read_next_image_to_cache_in_ram</label>
+                </div>
             </div>
             <div id="listing_view">
-                <p> listing_view </p>
+                <p class="ui_text"> listing_view </p>
             </div>
         </div>
-        <div id="preview_view">preview_view</div>
-        <div id="reader_view" style="display: none;">reader_view</div>
+        <div id="preview_view" class="ui_text">preview_view</div>
+        <div id="reader_view" class="ui_text" style="display: none;">reader_view</div>
     </div>
     <script src="index.js"></script>
 </body>

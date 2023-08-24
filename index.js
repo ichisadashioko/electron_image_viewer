@@ -220,6 +220,86 @@ function to_internal_path(inpath) {
     return retval;
 }
 
+function get_saved_sorting_method(input_dict) {
+    if (typeof (input_dict) == null) {
+        return null;
+    }
+
+    let input_path = input_dict['input_path'];
+    let default_sorting_method = input_dict['default_sorting_method'];
+    let retval = default_sorting_method;
+    let saved_sorting_method_array = input_dict['saved_sorting_method_array'];
+
+    if (typeof (input_path) !== 'string') {
+        return retval;
+    }
+
+    if (typeof (saved_sorting_method_array) !== 'object') {
+        return retval;
+    }
+
+    if (typeof (saved_sorting_method_array.length) !== 'number') {
+        return retval;
+    }
+
+    if (saved_sorting_method_array.length > 0) { } else {
+        return retval;
+    }
+
+    let _input_path = to_internal_path(input_path);
+    for (let i = 0; i < saved_sorting_method_array.length; i++) {
+        let saved_sorting_method_info = saved_sorting_method_array[i];
+        if (saved_sorting_method_info.location == null) {
+            continue;
+        }
+
+        if (typeof (saved_sorting_method_info.location) !== 'string') {
+            continue;
+        }
+
+        let _saved_path = to_internal_path(saved_sorting_method_info.location);
+
+        if (_input_path === _saved_path) {
+            sorting_method = saved_sorting_method_info.method;
+            // TODO validate sorting_method
+            break;
+        }
+    }
+
+    return retval;
+}
+
+function sort_file_info_array_by_sorting_method(file_info_array, sorting_method) {
+    if (typeof (file_info_array) !== 'object') {
+        return;
+    }
+
+    if (typeof (file_info_array.length) !== 'number') {
+        return;
+    }
+
+    if (file_info_array.length < 2) {
+        return file_info_array;
+    }
+
+    if (sorting_method == null) {
+        return file_info_array;
+    }
+
+    let retval = file_info_array;
+
+    if (sorting_method === SORTING_METHOD_NONE) {
+        // TODO
+    } else if (sorting_method === SORTING_METHOD_IGNORE_EXTENSION_AND_SORT_BY_NUMBER) {
+        retval = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(file_info_array);
+    } else {
+        // TODO
+        console.warn(`${G}TODO${RS} handle unknown sorting_method ${R}${sorting_method}${RS}`);
+    }
+
+    return retval;
+}
+
 /**
  * @param {string} inpath
  */
@@ -295,6 +375,99 @@ function sort_filename_array_method0(file_info_array) {
     for (let i = 0; i < tmp_array.length; i++) {
         let tmp = tmp_array[i];
         retval.push(tmp['value']);
+    }
+
+    return retval;
+}
+
+function sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(file_info_array) {
+    if (file_info_array == null) {
+        return;
+    }
+
+    if (typeof (file_info_array) !== 'object') {
+        return file_info_array;
+    }
+
+    if (typeof (file_info_array.length) !== 'number') {
+        return file_info_array;
+    }
+
+    if (file_info_array.length < 2) {
+        return file_info_array;
+    }
+
+    let retval = [];
+    let tmp_array = [];
+    let invalid_file_info_array = [];
+
+    for (let i = 0; i < file_info_array.length; i++) {
+        let file_info = file_info_array[i];
+        let filename = file_info['filename'];
+
+        if (filename == null) {
+            return file_info_array;
+        }
+
+        if (typeof (filename) !== 'string') {
+            return file_info_array;
+        }
+
+        let _filename = filename;
+        let dot_idx = _filename.lastIndexOf('.');
+
+        if (dot_idx === -1) { }
+        else if (dot_idx === 0) {
+            invalid_file_info_array.push(file_info);
+            continue;
+        } else {
+            _filename = _filename.substring(0, dot_idx);
+        }
+
+        if (_filename.length === 0) {
+            invalid_file_info_array.push(file_info);
+            continue;
+        }
+
+        let basename = _filename;
+
+        if (basename.length === 0) {
+            invalid_file_info_array.push(file_info);
+            continue;
+        }
+
+        let is_integer = /^\d+$/.test(basename);
+        if (!is_integer) {
+            invalid_file_info_array.push(file_info);
+            continue;
+        }
+
+        let int_value = parseInt(basename);
+        tmp_array.push({
+            'key': int_value,
+            'value': file_info,
+        });
+    }
+
+    tmp_array.sort(function (a, b) {
+        let a_key = a['key'];
+        let b_key = b['key'];
+        if (a_key < b_key) {
+            return -1;
+        } else if (a_key > b_key) {
+            return 1;
+        } else {
+            return 0;
+        }
+    });
+
+    for (let i = 0; i < tmp_array.length; i++) {
+        let tmp = tmp_array[i];
+        retval.push(tmp['value']);
+    }
+
+    if (invalid_file_info_array.length > 0) {
+        retval = retval.concat(invalid_file_info_array);
     }
 
     return retval;
@@ -535,7 +708,8 @@ function show_directory_first_image(file_info) {
         return;
     }
 
-    valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
+    // valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
+    valid_image_filepath_info_array = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
     let first_image_filepath_info = valid_image_filepath_info_array[0];
     return show_single_image({
         'filepath': first_image_filepath_info['filepath'],
@@ -692,63 +866,44 @@ function next_image_in_top_level_location(input_dict) {
     }
 
     if (default_sorting_method == null) {
-        default_sorting_method = SORTING_METHOD_NONE;
+        // default_sorting_method = SORTING_METHOD_NONE;
+        default_sorting_method = SORTING_METHOD_IGNORE_EXTENSION_AND_SORT_BY_NUMBER;
     }
-
-    if (saved_sorting_method_array == null) {
-        // saved_sorting_method_array = [];
-    } else {
-        if (saved_sorting_method_array.length == null) {
-            saved_sorting_method_array = [];
-        }
-
-        if (typeof (saved_sorting_method_array.length) !== 'number') {
-            saved_sorting_method_array = [];
-        }
-
-        if (saved_sorting_method_array.length == 0) {
-            saved_sorting_method_array = null;
-        }
-    }
-
 
     if (!check_current_location) {
         let _parent = top_level_location;
         let child_filename_array = fs.readdirSync(to_platform_path(_parent));
-        let sorting_method = default_sorting_method;
-        if (saved_sorting_method_array != null) {
-            if (saved_sorting_method_array.length > 0) {
-                for (let i = 0; i < saved_sorting_method_array; i++) {
-                    let saved_sorting_method_info = saved_sorting_method_array[i];
-                    if (saved_sorting_method_info.location == null) {
-                        continue;
-                    }
-
-                    if (typeof (saved_sorting_method_info.location) !== 'string') {
-                        continue;
-                    }
-
-                    if (to_platform_path(saved_sorting_method_info.location) === to_platform_path(_parent)) {
-                        sorting_method = saved_sorting_method_info.method;
-                        // TODO validate sorting_method
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (sorting_method === SORTING_METHOD_NONE) {
-            // TODO
-        } else {
-            // TODO
-            console.warn('TODO handle sorting_method');
-        }
 
         if (child_filename_array.length === 0) {
             console.log('no child file found');
             // TODO handle deleted file and directory
             return;
         }
+
+        let sorting_method = get_saved_sorting_method({
+            'input_path': _parent,
+            'default_sorting_method': default_sorting_method,
+            'saved_sorting_method_array': saved_sorting_method_array,
+        });
+
+        let _tmp_file_info_array = [];
+        for (let i = 0; i < child_filename_array.length; i++) {
+            let _tmp_file_info = {
+                'filename': child_filename_array[i],
+            };
+
+            _tmp_file_info_array.push(_tmp_file_info);
+        }
+
+        _tmp_file_info_array = sort_file_info_array_by_sorting_method(_tmp_file_info_array, sorting_method);
+        let _tmp_child_filename_array = [];
+        for (let i = 0; i < _tmp_file_info_array.length; i++) {
+            let _tmp_file_info = _tmp_file_info_array[i];
+            let _tmp_child_filename = _tmp_file_info['filename'];
+            _tmp_child_filename_array.push(_tmp_child_filename);
+        }
+
+        child_filename_array = _tmp_child_filename_array;
 
         let found_location = null;
 
@@ -1082,7 +1237,8 @@ function next_image(
         return;
     }
 
-    valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
+    // valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
+    valid_image_filepath_info_array = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
     let current_showing_image_index = -1;
     for (let i = 0; i < valid_image_filepath_info_array.length; i++) {
         let image_filepath_info = valid_image_filepath_info_array[i];
@@ -1413,6 +1569,26 @@ function generate_listing_dom(path_data_array) {
                 console.log('directory');
                 let child_filename_array = fs.readdirSync(to_platform_path(local_path));
                 console.log(child_filename_array);
+
+                let _tmp_file_info_array = [];
+                for (let i = 0; i < child_filename_array.length; i++) {
+                    let _tmp_file_info = {
+                        'filename': child_filename_array[i],
+                    };
+
+                    _tmp_file_info_array.push(_tmp_file_info);
+                }
+
+                _tmp_file_info_array = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(_tmp_file_info_array);
+                let _tmp_child_filename_array = [];
+                for (let i = 0; i < _tmp_file_info_array.length; i++) {
+                    let _tmp_file_info = _tmp_file_info_array[i];
+                    let _tmp_child_filename = _tmp_file_info['filename'];
+                    _tmp_child_filename_array.push(_tmp_child_filename);
+                }
+
+                child_filename_array = _tmp_child_filename_array;
+
                 let child_file_data_array = [];
                 for (let j = 0; j < child_filename_array.length; j++) {
                     let child_filename = child_filename_array[j];
@@ -1672,7 +1848,9 @@ function _next_image3() {
         return;
     }
 
-    valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
+    // valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
+    valid_image_filepath_info_array = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
+
     let current_showing_image_index = -1;
     for (let i = 0; i < valid_image_filepath_info_array.length; i++) {
         let image_filepath_info = valid_image_filepath_info_array[i];
