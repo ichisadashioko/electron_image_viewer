@@ -1900,6 +1900,28 @@ function _next_image3() {
     });
 }
 
+function toggle_popup_container_visibility() {
+    let navigation_panel = document.getElementById('popup_container');
+    if (navigation_panel == null) {
+        console.log('navigation panel not found');
+        return;
+    }
+
+    // adding and removing hidden class
+    let was_hidden = navigation_panel.classList.toggle('hidden');
+    let show_popup_container = document.getElementById('show_popup_container');
+    if (show_popup_container == null) {
+        console.log('show_popup_container not found');
+        return;
+    }
+
+    if (!was_hidden) {
+        show_popup_container.classList.add('hidden');
+    } else {
+        show_popup_container.classList.remove('hidden');
+    }
+}
+
 // manga view
 // right to left
 // load image on demand
@@ -1930,13 +1952,14 @@ document.body.addEventListener('keydown', function (event) {
 
     // toggle navigation panel visibility
     if (event.key === 'n') {
-        let navigation_panel = document.getElementById('popup_container');
-        if (navigation_panel == null) {
-            console.log('navigation panel not found');
-            return;
-        }
-        // adding and removing hidden class
-        navigation_panel.classList.toggle('hidden');
+        toggle_popup_container_visibility();
+        // let navigation_panel = document.getElementById('popup_container');
+        // if (navigation_panel == null) {
+        //     console.log('navigation panel not found');
+        //     return;
+        // }
+        // // adding and removing hidden class
+        // navigation_panel.classList.toggle('hidden');
         event.preventDefault();
     }
     // next page (arrow right)
@@ -2078,22 +2101,26 @@ if (add_location_button != null) {
 }
 
 let hide_popup_button = document.getElementById('hide_popup_button');
-if (hide_popup_button != null) {
+if (hide_popup_button == null) {
+    console.error('hide_popup_button not found');
+} else {
     hide_popup_button.addEventListener('click', function (event) {
-        let navigation_panel = document.getElementById('popup_container');
-        if (navigation_panel == null) {
-            console.log('navigation panel not found');
-            return;
-        }
-
-        // adding and removing hidden class
-        navigation_panel.classList.toggle('hidden');
+        toggle_popup_container_visibility();
     });
 }
 
-let use_next_image2_fallback_checkbox = document.getElementById('use_next_image2_fallback_checkbox');
+let show_popup_container = document.getElementById('show_popup_container');
+if (show_popup_container == null) {
+    console.error('show_popup_container not found');
+} else {
+    show_popup_container.addEventListener('click', function () {
+        toggle_popup_container_visibility();
+    });
+}
+
+let use_next_image2_fallback_checkbox = document.getElementById('use_next_image2_fallback');
 if (use_next_image2_fallback_checkbox == null) {
-    console.error('use_next_image2_fallback_checkbox not found');
+    console.error('use_next_image2_fallback not found');
 } else {
     use_next_image2_fallback_checkbox.addEventListener('change', function (event) {
         state.use_next_image2_fallback = use_next_image2_fallback_checkbox.checked;

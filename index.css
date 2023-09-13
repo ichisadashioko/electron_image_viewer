@@ -118,6 +118,8 @@ body {
 }
 
 #add_location_button,
+#hide_popup_button,
+#show_popup_container,
 #add_location_input {
     color: #ffffff;
     background-color: #000000;
@@ -134,4 +136,21 @@ body {
 
 .ui_text {
     font-size: 16px;
+}
+
+#show_popup_container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 32;
+    opacity: 0;
+    padding: 10px;
+}
+
+#show_popup_container:hover {
+    opacity: 0.75;
+}
+
+#show_popup_container.hidden {
+    display: none !important;
 }
