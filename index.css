@@ -23,13 +23,13 @@ body {
     white-space: nowrap;
 }
 
-.listing_entry.even {
+/* .listing_entry.even {
     background-color: rgba(22, 22, 22, 0.5);
 }
 
 .listing_entry.odd {
     background-color: rgba(0, 0, 0, 0.5);
-}
+} */
 
 .display_name:hover {
     background-color: rgba(0, 255, 0, 0.2);
@@ -57,14 +57,15 @@ body {
     /* height: 100vh !important; */
     /* max-height: 100vh !important; */
     z-index: 32;
-    overflow: scroll;
+    overflow: auto;
+    resize: both;
 }
 
 /* TODO make custom scroll bar inside #popup_container */
-#popup_container::-webkit-scrollbar {
+/* #popup_container::-webkit-scrollbar {
     width: 0px;
     background: none;
-}
+} */
 
 /* #preview_view {
     width: 100%;

@@ -6,6 +6,7 @@ import stat
 import threading
 import traceback
 import io
+import pickle
 
 import urllib
 import urllib.parse
@@ -314,3 +315,194 @@ print('', flush=True)
 print(f'len(all_success_log) {G}{len(all_success_log)}{RS}')
 print(f'len(all_error_log) {R}{len(all_error_log)}{RS}')
 print('', flush=True)
+
+# %%
+
+
+def download_with_requests(
+    url_str: str,
+    destination_filepath: str,
+    timeout=180,
+    chunk_size=1024,
+    proxy_url: str = None,
+):
+    if os.path.exists(destination_filepath):
+        return
+
+    _parent = os.path.split(destination_filepath)[0]
+    if not os.path.exists(_parent):
+        os.makedirs(_parent)
+
+    proxy_dict = None
+    if proxy_url is not None:
+        proxy_dict = {
+            'http': proxy_url,
+            'https': proxy_url,
+        }
+
+    response_obj = requests.get(
+        url_str,
+        proxies=proxy_dict,
+        timeout=60,
+        stream=True,
+    )
+
+    response_content_buffer = io.BytesIO()
+    response_status_code = response_obj.status_code
+    response_header_dict = dict(response_obj.headers)
+
+    content_length_value = None
+    for k, v in response_header_dict.items():
+        if k.lower() == 'content-length':
+            content_length_value = v
+            break
+
+    if content_length_value is not None:
+        try:
+            content_length_value = int(content_length_value)
+            # TODO
+        except Exception as ex:
+            stacktrace = traceback.format_exc()
+            print(f'{Y}{ex}{RS}', flush=True)
+            print(f'{R}{stacktrace}{RS}', flush=True)
+
+    start_time_ns = time.time_ns()
+    total_bytes_downloaded = 0
+    average_speed_bytes_per_sec = 0
+    download_chunk_log = []
+
+    content_length_value_str = 'unknown'
+    if isinstance(content_length_value, int):
+        content_length_value_str = repr(content_length_value)
+
+    for chunk_bs in response_obj.iter_content(chunk_size=chunk_size):
+        recv_time_ns = time.time_ns()
+
+        response_content_buffer.write(chunk_bs)
+        total_bytes_downloaded += len(chunk_bs)
+
+        download_chunk_log.append({
+            'recv_time_ns': recv_time_ns,
+            'len(chunk_bs)': len(chunk_bs),
+        })
+
+        elapsed_time_ns = recv_time_ns - start_time_ns
+        elapsed_time_secs = elapsed_time_ns / 1e9
+
+        if elapsed_time_secs > 0:
+            avg_speed = total_bytes_downloaded / elapsed_time_secs
+            log_line = f'{elapsed_time_secs:.2f} {total_bytes_downloaded} {avg_speed:.2f} {content_length_value_str}'
+            print(log_line, end='\r')
+
+    response_content_bs = response_content_buffer.getvalue()
+
+    with open(destination_filepath, 'wb') as outfile:
+        outfile.write(response_content_bs)
+
+    return {
+        'response_obj': response_obj,
+        'start_time_ns': start_time_ns,
+        'total_bytes_downloaded': total_bytes_downloaded,
+        'average_speed_bytes_per_sec': average_speed_bytes_per_sec,
+    }
+
+
+def download_with_requests(
+    url_str: str,
+    destination_filepath: str,
+    timeout=180,
+    chunk_size=1024,
+    proxy_url: str = None,
+):
+    if os.path.exists(destination_filepath):
+        return
+
+    _parent = os.path.split(destination_filepath)[0]
+    if not os.path.exists(_parent):
+        os.makedirs(_parent)
+
+    proxy_dict = None
+    if proxy_url is not None:
+        proxy_dict = {
+            'http': proxy_url,
+            'https': proxy_url,
+        }
+
+    response_obj = requests.get(
+        url_str,
+        proxies=proxy_dict,
+        timeout=60,
+        stream=True,
+    )
+
+    response_content_buffer = io.BytesIO()
+    response_status_code = response_obj.status_code
+    response_header_dict = dict(response_obj.headers)
+
+    content_length_value = None
+    for k, v in response_header_dict.items():
+        if k.lower() == 'content-length':
+            content_length_value = v
+            break
+
+    if content_length_value is not None:
+        try:
+            content_length_value = int(content_length_value)
+            # TODO
+        except Exception as ex:
+            stacktrace = traceback.format_exc()
+            print(f'{Y}{ex}{RS}', flush=True)
+            print(f'{R}{stacktrace}{RS}', flush=True)
+
+    start_time_ns = time.time_ns()
+    total_bytes_downloaded = 0
+    average_speed_bytes_per_sec = 0
+    download_chunk_log = []
+
+    content_length_value_str = 'unknown'
+    if isinstance(content_length_value, int):
+        content_length_value_str = repr(content_length_value)
+
+    for chunk_bs in response_obj.iter_content(chunk_size=chunk_size):
+        recv_time_ns = time.time_ns()
+
+        response_content_buffer.write(chunk_bs)
+        total_bytes_downloaded += len(chunk_bs)
+
+        download_chunk_log.append({
+            'recv_time_ns': recv_time_ns,
+            'len(chunk_bs)': len(chunk_bs),
+        })
+
+        elapsed_time_ns = recv_time_ns - start_time_ns
+        elapsed_time_secs = elapsed_time_ns / 1e9
+
+        if elapsed_time_secs > 0:
+            avg_speed = total_bytes_downloaded / elapsed_time_secs
+            log_line = f'{url_str} {R}{elapsed_time_secs:.2f}{RS} {total_bytes_downloaded} {G}{avg_speed:.2f}{RS} {content_length_value_str} {Y}{proxy_url}{RS}'
+
+            if isinstance(content_length_value, int):
+                if content_length_value > 0:
+                    percent_downloaded = total_bytes_downloaded / content_length_value * 100
+                    log_line += f' {G}{percent_downloaded:.2f}%{RS}'
+
+            print(log_line, end='\r')
+
+    response_content_bs = response_content_buffer.getvalue()
+
+    with open(destination_filepath, 'wb') as outfile:
+        outfile.write(response_content_bs)
+
+    log_obj = {
+        'response_obj': response_obj,
+        'start_time_ns': start_time_ns,
+        'total_bytes_downloaded': total_bytes_downloaded,
+        'average_speed_bytes_per_sec': average_speed_bytes_per_sec,
+    }
+
+    log_filepath = f'{time.time_ns()}.pickle'
+    with open(log_filepath, 'wb') as outfile:
+        pickle.dump(log_obj, outfile)
+
+    log_obj['log_filepath'] = log_filepath
+    return log_obj

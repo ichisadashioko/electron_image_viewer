@@ -291,7 +291,7 @@ function sort_file_info_array_by_sorting_method(file_info_array, sorting_method)
     if (sorting_method === SORTING_METHOD_NONE) {
         // TODO
     } else if (sorting_method === SORTING_METHOD_IGNORE_EXTENSION_AND_SORT_BY_NUMBER) {
-        retval = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(file_info_array);
+        retval = sort_filename_by_first_found_integer_strip_extension_push_invalid_basename_at_the_end(file_info_array);
     } else {
         // TODO
         console.warn(`${G}TODO${RS} handle unknown sorting_method ${R}${sorting_method}${RS}`);
@@ -380,6 +380,60 @@ function sort_filename_array_method0(file_info_array) {
     return retval;
 }
 
+function is_digit(c) {
+    if (c == null) {
+        return false;
+    }
+
+    if (typeof (c) !== 'string') {
+        return false;
+    }
+
+    if (c.length !== 1) {
+        return false;
+    }
+
+    return /\d/.test(c);
+}
+
+function find_first_integer_in_string(input_str) {
+    if (input_str == null) {
+        return null;
+    }
+
+    if (typeof (input_str) !== 'string') {
+        return null;
+    }
+
+    let first_digit = false;
+    let reading_integer = false;
+    let retval_integer_str = '';
+    for (let i = 0; i < input_str.length; i++) {
+        let c = input_str[i];
+        if (!first_digit) {
+            if (is_digit(c)) {
+                first_digit = true;
+                reading_integer = true;
+                retval_integer_str = retval_integer_str.concat(c);
+            }
+        }
+
+        if (reading_integer) {
+            if (is_digit(c)) {
+                retval_integer_str = retval_integer_str.concat(c);
+            } else {
+                break;
+            }
+        }
+    }
+
+    if (retval_integer_str.length < 1) {
+        return null;
+    }
+
+    return parseInt(retval_integer_str);
+}
+
 function sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(file_info_array) {
     if (file_info_array == null) {
         return;
@@ -443,6 +497,100 @@ function sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_e
         }
 
         let int_value = parseInt(basename);
+        tmp_array.push({
+            'key': int_value,
+            'value': file_info,
+        });
+    }
+
+    tmp_array.sort(function (a, b) {
+        let a_key = a['key'];
+        let b_key = b['key'];
+        if (a_key < b_key) {
+            return -1;
+        } else if (a_key > b_key) {
+            return 1;
+        } else {
+            return 0;
+        }
+    });
+
+    for (let i = 0; i < tmp_array.length; i++) {
+        let tmp = tmp_array[i];
+        retval.push(tmp['value']);
+    }
+
+    if (invalid_file_info_array.length > 0) {
+        retval = retval.concat(invalid_file_info_array);
+    }
+
+    return retval;
+}
+
+
+function sort_filename_by_first_found_integer_strip_extension_push_invalid_basename_at_the_end(file_info_array) {
+    if (file_info_array == null) {
+        return;
+    }
+
+    if (typeof (file_info_array) !== 'object') {
+        return file_info_array;
+    }
+
+    if (typeof (file_info_array.length) !== 'number') {
+        return file_info_array;
+    }
+
+    if (file_info_array.length < 2) {
+        return file_info_array;
+    }
+
+    let retval = [];
+    let tmp_array = [];
+    let invalid_file_info_array = [];
+
+    for (let i = 0; i < file_info_array.length; i++) {
+        let file_info = file_info_array[i];
+        let filename = file_info['filename'];
+
+        if (filename == null) {
+            return file_info_array;
+        }
+
+        if (typeof (filename) !== 'string') {
+            return file_info_array;
+        }
+
+        let _filename = filename;
+        let dot_idx = _filename.lastIndexOf('.');
+
+        if (dot_idx === -1) { }
+        else if (dot_idx === 0) {
+            invalid_file_info_array.push(file_info);
+            continue;
+        } else {
+            _filename = _filename.substring(0, dot_idx);
+        }
+
+        if (_filename.length === 0) {
+            invalid_file_info_array.push(file_info);
+            continue;
+        }
+
+        let basename = _filename;
+
+        if (basename.length === 0) {
+            invalid_file_info_array.push(file_info);
+            continue;
+        }
+
+        let is_integer = find_first_integer_in_string(basename);
+        if (is_integer == null) {
+            invalid_file_info_array.push(file_info);
+            continue;
+        }
+
+        let int_value = is_integer;
         tmp_array.push({
             'key': int_value,
             'value': file_info,
@@ -709,7 +857,7 @@ function show_directory_first_image(file_info) {
     }
 
     // valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
-    valid_image_filepath_info_array = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
+    valid_image_filepath_info_array = sort_filename_by_first_found_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
     let first_image_filepath_info = valid_image_filepath_info_array[0];
     return show_single_image({
         'filepath': first_image_filepath_info['filepath'],
@@ -1238,7 +1386,7 @@ function next_image(
     }
 
     // valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
-    valid_image_filepath_info_array = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
+    valid_image_filepath_info_array = sort_filename_by_first_found_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
     let current_showing_image_index = -1;
     for (let i = 0; i < valid_image_filepath_info_array.length; i++) {
         let image_filepath_info = valid_image_filepath_info_array[i];
@@ -1315,6 +1463,12 @@ function next_image(
         if (next_image_filepath_info2 != null) {
             next_image_filepath2 = next_image_filepath_info2.filepath;
         }
+    }
+
+    if (to_web_friendly_path(current_showing_image_absolute_path) === to_web_friendly_path(next_image_filepath1)) {
+        // TODO handle loop back to first image feedback
+        console.error('this directory only have a single image');
+        return;
     }
 
     let render_retval = show_single_image({
@@ -1438,6 +1592,26 @@ function show_next_directory(backward) {
     }
 
     // TODO load saved sorting method
+
+    let _tmp_file_info_array = [];
+    for (let i = 0; i < child_filename_array.length; i++) {
+        let _tmp_file_info = {
+            'filename': child_filename_array[i],
+        };
+
+        _tmp_file_info_array.push(_tmp_file_info);
+    }
+
+    _tmp_file_info_array = sort_filename_by_first_found_integer_strip_extension_push_invalid_basename_at_the_end(_tmp_file_info_array);
+    let _tmp_child_filename_array = [];
+    for (let i = 0; i < _tmp_file_info_array.length; i++) {
+        let _tmp_file_info = _tmp_file_info_array[i];
+        let _tmp_child_filename = _tmp_file_info['filename'];
+        _tmp_child_filename_array.push(_tmp_child_filename);
+    }
+
+    child_filename_array = _tmp_child_filename_array;
+
     let directory_info_array = [];
     for (let i = 0; i < child_filename_array.length; i++) {
         let child_filename = child_filename_array[i];
@@ -1564,6 +1738,26 @@ function generate_listing_dom(path_data_array) {
                 return;
             }
 
+            // check for expanded class
+            for (let _class_idx = 0; _class_idx < name_div.classList.length; _class_idx++) {
+                let _class_name = name_div.classList[_class_idx];
+                if (_class_name == 'expanded') {
+                    name_div.classList.remove('expanded');
+                    // remove children
+                    let child_container = li.querySelector('.child_container');
+                    if (child_container == null) {
+
+                    } else {
+                        // clear child container
+                        while (child_container.firstChild) {
+                            child_container.removeChild(child_container.firstChild);
+                        }
+                    }
+
+                    return;
+                }
+            }
+
             let path_info = get_path_info(local_path);
             if (path_info['type'] == 'directory') {
                 console.log('directory');
@@ -1579,7 +1773,7 @@ function generate_listing_dom(path_data_array) {
                     _tmp_file_info_array.push(_tmp_file_info);
                 }
 
-                _tmp_file_info_array = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(_tmp_file_info_array);
+                _tmp_file_info_array = sort_filename_by_first_found_integer_strip_extension_push_invalid_basename_at_the_end(_tmp_file_info_array);
                 let _tmp_child_filename_array = [];
                 for (let i = 0; i < _tmp_file_info_array.length; i++) {
                     let _tmp_file_info = _tmp_file_info_array[i];
@@ -1621,6 +1815,8 @@ function generate_listing_dom(path_data_array) {
                     for (let j = 0; j < child_listing_dom.length; j++) {
                         child_container.appendChild(child_listing_dom[j]);
                     }
+
+                    name_div.classList.add('expanded');
                 }
             } else if (path_info['type'] == 'regular_file') {
                 console.log('regular file');
@@ -1849,7 +2045,7 @@ function _next_image3() {
     }
 
     // valid_image_filepath_info_array = sort_filename_array_method0(valid_image_filepath_info_array);
-    valid_image_filepath_info_array = sort_filename_by_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
+    valid_image_filepath_info_array = sort_filename_by_first_found_integer_strip_extension_push_invalid_basename_at_the_end(valid_image_filepath_info_array);
 
     let current_showing_image_index = -1;
     for (let i = 0; i < valid_image_filepath_info_array.length; i++) {
@@ -1982,6 +2178,10 @@ document.body.addEventListener('keydown', function (event) {
                 (function () {
                     if (next_image(false)) {
                         event.preventDefault();
+                    } else if (state.use_next_image2_fallback) {
+                        if (next_image2(false)) {
+                            event.preventDefault();
+                        }
                     }
                 })();
             }
@@ -2010,6 +2210,10 @@ document.body.addEventListener('keydown', function (event) {
                 (function () {
                     if (next_image(true)) {
                         event.preventDefault();
+                    } else if (state.use_next_image2_fallback) {
+                        if (next_image2(true)) {
+                            event.preventDefault();
+                        }
                     }
                 })();
             }
